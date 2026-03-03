@@ -1,68 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>投資ゲーム</title>
-<style>
-  body { font-family: sans-serif; text-align: center; margin-top: 50px; }
-  button { padding: 10px 20px; margin: 5px; }
-</style>
+<title>Stock Game</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h1>投資ゲーム</h1>
+<div id="nicknameScreen">
+    <h1>Stock Simulator</h1>
+    <input type="text" id="nicknameInput" placeholder="ニックネーム">
+    <button onclick="startGame()">START</button>
+</div>
 
-<p>所持金: <span id="money">1000</span> 円</p>
-<p>株価: <span id="price">100</span> 円</p>
-<p>保有株数: <span id="stock">0</span> 株</p>
+<div id="gameScreen" style="display:none;">
+    <h2 id="playerName"></h2>
+    <p>所持ポイント: <span id="points"></span></p>
+    <p>現在株価: <span id="stockPrice"></span></p>
+    <button onclick="buyStock()">購入</button>
+    <button onclick="sellStock()">売却</button>
 
-<button onclick="buy()">買う</button>
-<button onclick="sell()">売る</button>
-<button onclick="nextDay()">次の日へ</button>
+    <canvas id="chart" width="400" height="200"></canvas>
 
-<script>
-let money = 1000;
-let price = 100;
-let stock = 0;
+    <h3>ランキング</h3>
+    <ul id="ranking"></ul>
+</div>
 
-function update() {
-  document.getElementById("money").textContent = money;
-  document.getElementById("price").textContent = price;
-  document.getElementById("stock").textContent = stock;
-}
-
-function buy() {
-  if (money >= price) {
-    money -= price;
-    stock += 1;
-    update();
-  } else {
-    alert("お金が足りない！");
-  }
-}
-
-function sell() {
-  if (stock > 0) {
-    money += price;
-    stock -= 1;
-    update();
-  } else {
-    alert("株を持っていない！");
-  }
-}
-
-function nextDay() {
-  // 株価をランダム変動
-  let change = Math.floor(Math.random() * 21) - 10;
-  price += change;
-
-  if (price < 10) price = 10;
-
-  update();
-}
-
-update();
-</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="script.js"></script>
 
 </body>
 </html>
