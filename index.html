@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NEON STOCK GOD MODE</title>
@@ -9,36 +10,115 @@
 <style>
 body{
     margin:0;
-    font-family:Arial,sans-serif;
-    background:#0f0f1a;
-    color:white;
+    font-family:'Orbitron',sans-serif;
+    background:#050510;
+    color:#00f5ff;
     text-align:center;
     transition:0.5s;
 }
-.container{max-width:1100px;margin:auto;padding:10px;}
+
+/* 背景にゆっくり動くグラデーション */
+body::before{
+    content:"";
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:linear-gradient(45deg,#001f3f,#0a0a2a,#001a33,#000814);
+    background-size:400% 400%;
+    animation:bgMove 15s ease infinite;
+    z-index:-1;
+}
+
+@keyframes bgMove{
+    0%{background-position:0% 50%;}
+    50%{background-position:100% 50%;}
+    100%{background-position:0% 50%;}
+}
+
+.container{
+    max-width:1100px;
+    margin:auto;
+    padding:10px;
+}
+
+/* タイトル発光 */
+h1{
+    font-size:42px;
+    font-weight:900;
+    text-shadow:
+        0 0 10px #00f5ff,
+        0 0 20px #00f5ff,
+        0 0 40px #0088ff;
+}
+
+/* カード */
 .card{
-    background:#1a1a2e;
+    background:rgba(0,0,30,0.8);
+    border:1px solid #00f5ff;
+    box-shadow:0 0 15px #00f5ff55;
     padding:15px;
-    margin:10px 0;
-    border-radius:10px;
+    margin:12px 0;
+    border-radius:12px;
+    transition:0.3s;
 }
+
+.card:hover{
+    box-shadow:0 0 25px #00f5ffaa;
+    transform:scale(1.02);
+}
+
+/* ボタン */
 button{
-    padding:5px 10px;
-    margin:3px;
-    border:none;
-    border-radius:5px;
-    background:#00f5ff;
-    cursor:pointer;
-}
-button:hover{background:#00aaff;}
-.locked{opacity:0.5;}
-.flavor{
-    font-size:12px;
+    padding:6px 12px;
+    margin:4px;
+    border-radius:6px;
+    border:1px solid #00f5ff;
+    background:transparent;
     color:#00f5ff;
-    margin-top:5px;
-    min-height:18px;
+    cursor:pointer;
+    transition:0.3s;
 }
+
+button:hover{
+    background:#00f5ff;
+    color:#000;
+    box-shadow:0 0 10px #00f5ff;
+}
+
+/* ロック状態 */
+.locked{
+    opacity:0.4;
+    filter:blur(1px);
+}
+
+/* フレーバーテキスト */
+.flavor{
+    font-size:13px;
+    color:#66ffff;
+    margin-top:6px;
+    min-height:18px;
+    text-shadow:0 0 5px #00f5ff;
+}
+
+/* 情報テキスト */
+p{
+    font-size:15px;
+    text-shadow:0 0 5px #0088ff;
+}
+
+/* グラフ */
+canvas{
+    background:rgba(0,0,30,0.7);
+    border:1px solid #00f5ff;
+    border-radius:10px;
+    box-shadow:0 0 15px #00f5ff55;
+}
+
+/* スマホ最適化 */
 @media(max-width:600px){
+    h1{font-size:28px;}
     canvas{width:100%!important;height:250px!important;}
 }
 </style>
