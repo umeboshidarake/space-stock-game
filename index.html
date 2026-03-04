@@ -379,31 +379,45 @@ function updatePrices(){
 }
 
 function updateTimer(){
-    const remain=300000-(Date.now()-data.lastUpdate);
+    const remain=60000-(Date.now()-data.lastUpdate);
     const sec=Math.max(0,Math.floor(remain/1000));
     document.getElementById("timer").innerText=sec+"秒";
 }
 
 function drawGraph(canvas,dataArr){
-    const ctx=canvas.getContext("2d");
-    ctx.clearRect(0,0,200,100);
-    ctx.beginPath();
-    ctx.strokeStyle="cyan";
-    if(dataArr.length>1){
-        const max=Math.max(...dataArr);
-        const min=Math.min(...dataArr);
-        dataArr.forEach((v,i)=>{
-            const x=i*(200/20);
-            const y=100-((v-min)/(max-min+1))*100;
-            if(i==0)ctx.moveTo(x,y);
-            else ctx.lineTo(x,y);
-        });
-    }
-    ctx.stroke();
-}
+    const ctx = canvas.getContext("2d");
+    const width = canvas.width;
+    const height = canvas.height;
 
-if(data.nickname){
-    init();
+    ctx.clearRect(0,0,width,height);
+
+    ctx.strokeStyle = "cyan";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    // データがない場合は真ん中に線
+    if(dataArr.length === 0){
+        ctx.moveTo(0,height/2);
+        ctx.lineTo(width,height/2);
+        ctx.stroke();
+        return;
+    }
+
+    const max = Math.max(...dataArr);
+    const min = Math.min(...dataArr);
+
+    dataArr.forEach((v,i)=>{
+        const x = (i / (dataArr.length - 1 || 1)) * width;
+        const y = height - ((v - min) / (max - min || 1)) * height;
+
+        if(i === 0){
+            ctx.moveTo(x,y);
+        }else{
+            ctx.lineTo(x,y);
+        }
+    });
+
+    ctx.stroke();
 }
 </script>
 </body>
