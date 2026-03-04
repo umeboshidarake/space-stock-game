@@ -115,6 +115,17 @@ input{
         padding:4px;
     }
 }
+#tooltip{
+    position:fixed;
+    background:rgba(0,0,0,0.9);
+    border:1px solid cyan;
+    padding:8px;
+    color:white;
+    font-size:14px;
+    pointer-events:none;
+    display:none;
+    z-index:1000;
+}
 </style>
 </head>
 <body>    
@@ -295,14 +306,17 @@ function updateUI(){
             <p>価格: ${stock.price}G</p>
             <p>保有: ${stock.owned}</p>
         `;
+        card.onmousemove = (e) => {
+    const tooltip = document.getElementById("tooltip");
+    tooltip.style.display = "block";
+    tooltip.style.left = e.clientX + 15 + "px";
+    tooltip.style.top = e.clientY + 15 + "px";
+    tooltip.innerText = stock.flavor;
+};
 
-        const flavor=document.createElement("div");
-        flavor.className="flavor";
-        flavor.innerText=stock.personality;
-        card.appendChild(flavor);
-
-        card.onmouseenter=()=>{ flavor.style.display="block"; };
-        card.onmouseleave=()=>{ flavor.style.display="none"; };
+card.onmouseleave = () => {
+    document.getElementById("tooltip").style.display = "none";
+};
 
         if(stock.unlocked){
             [1,10,100].forEach(n=>{
@@ -319,12 +333,6 @@ function updateUI(){
     if(!stock.canSell || stock.owned<n) sellBtn.disabled=true;
     card.appendChild(sellBtn);
 });
-
-            const canvas=document.createElement("canvas");
-            canvas.width = card.clientWidth - 20;
-　　　　　　　canvas.height = 120;
-            card.appendChild(canvas);
-            drawGraph(canvas,stock.history);
         }else{
             const unlockBtn=document.createElement("button");
             unlockBtn.innerText="500Pで解放";
@@ -486,5 +494,6 @@ function drawAllGraph(){
     });
 }
 </script>
+ <div id="tooltip"></div>   
 </body>
 </html>
