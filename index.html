@@ -303,13 +303,19 @@ function updateUI(){
 function buyStock(i,amount){
     const stock=data.stocks[i];
     const cost=stock.price*amount;
-    if(data.money>=cost){
-        data.money-=cost;
-        stock.owned+=amount;
-        stock.canSell=false;
+
+    if(data.money < cost) return;
+
+    data.money -= cost;
+    stock.owned += amount;
+    stock.canSell = false;
+
+    // 安全チェック付き
+    if(audioCtx){
         playBuySound();
-        updateUI();
     }
+
+    updateUI();
 }
 
 function sellStock(i,amount){
