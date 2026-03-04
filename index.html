@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>SPACE STOCK</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
@@ -89,6 +90,31 @@ input{
     z-index:-999;
     pointer-events:none;
 }
+#allGraph{
+    width:100%;
+    background:black;
+    border:1px solid cyan;
+    margin-bottom:20px;
+}
+@media (max-width: 600px){
+    h1{
+        font-size:24px;
+    }
+
+    #stocks{
+        grid-template-columns:1fr;
+    }
+
+    canvas{
+        width:100%;
+        height:120px;
+    }
+
+    button{
+        font-size:12px;
+        padding:4px;
+    }
+}
 </style>
 </head>
 <body>    
@@ -107,6 +133,8 @@ input{
     <p>💰 所持金: <span id="money"></span>G</p>
     <p>⭐ ポイント: <span id="points"></span></p>
     <p>⏳ 次の変動まで: <span id="timer"></span></p>
+    <h2>📊 全銘柄グラフ</h2>
+<canvas id="allGraph" height="300"></canvas>
     <div id="stocks"></div>
 </div>
 
@@ -293,8 +321,8 @@ function updateUI(){
 });
 
             const canvas=document.createElement("canvas");
-            canvas.width=200;
-            canvas.height=100;
+            canvas.width = card.clientWidth - 20;
+　　　　　　　canvas.height = 120;
             card.appendChild(canvas);
             drawGraph(canvas,stock.history);
         }else{
@@ -308,6 +336,7 @@ function updateUI(){
     });
 
     save();
+    drawAllGraph();
 }
 
 function buyStock(i,amount){
@@ -418,6 +447,43 @@ function drawGraph(canvas,dataArr){
     });
 
     ctx.stroke();
+}
+
+function drawAllGraph(){
+    const canvas = document.getElementById("allGraph");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = canvas.clientWidth;
+    canvas.height = 300;
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    const colors = [
+        "cyan","lime","yellow","orange","red",
+        "magenta","white","blue","pink","lightgreen"
+    ];
+
+    data.stocks.forEach((stock,index)=>{
+
+        if(stock.history.length < 2) return;
+
+        const max = Math.max(...stock.history);
+        const min = Math.min(...stock.history);
+
+        ctx.beginPath();
+        ctx.strokeStyle = colors[index % colors.length];
+        ctx.lineWidth = 2;
+
+        stock.history.forEach((price,i)=>{
+            const x = (i/(stock.history.length-1)) * canvas.width;
+            const y = canvas.height - ((price-min)/(max-min||1))*canvas.height;
+
+            if(i===0) ctx.moveTo(x,y);
+            else ctx.lineTo(x,y);
+        });
+
+        ctx.stroke();
+    });
 }
 </script>
 </body>
