@@ -277,6 +277,35 @@ window.onload = function(){
     }
 
     animateStars();
+const graphCanvas=document.getElementById("allGraph");
+
+graphCanvas.onmousemove=(e)=>{
+
+const rect=graphCanvas.getBoundingClientRect();
+const x=e.clientX-rect.left;
+
+const index=Math.floor((x/graphCanvas.width)*data.stocks[0].history.length);
+
+let text="";
+
+data.stocks.forEach(stock=>{
+if(stock.history[index]){
+text+=stock.name+" "+stock.history[index]+"G\n";
+}
+});
+
+const tooltip=document.getElementById("tooltip");
+
+tooltip.style.display="block";
+tooltip.style.left=e.clientX+"px";
+tooltip.style.top=e.clientY+"px";
+tooltip.innerText=text;
+
+};
+
+graphCanvas.onmouseleave=()=>{
+document.getElementById("tooltip").style.display="none";
+};
 };
 let audioCtx;
 let bgmOscillators=[];
@@ -288,6 +317,7 @@ if(!data){
         money:10000,
         points:0,
         mint:0,
+        mintInventory:{},  
         stocks:[],
         lastUpdate:Date.now()
     };
@@ -360,12 +390,20 @@ function startBGM(){
 }
 
 function startGame(){
-    const name=document.getElementById("nicknameInput").value;
-    if(name.trim()=="")return;
-    data.nickname=name;
-    initAudio();
-    save();
-    init();
+
+let name=document.getElementById("nicknameInput").value;
+
+if(name.trim()=="" && data.nickname){
+name=data.nickname;
+}
+
+if(name.trim()=="") return;
+
+data.nickname=name;
+
+initAudio();
+save();
+init();
 }
 
 function init(){
@@ -596,7 +634,6 @@ function drawAllGraph(){
         ctx.stroke();
     });
 }
-const graphCanvas=document.getElementById("allGraph");
 
 graphCanvas.onmousemove=(e)=>{
 
@@ -671,28 +708,11 @@ const achievements=[
 { name:"ミント王",desc:"1000ミント",check:()=>data.mint>=1000},
 { name:"伝説トレーダー",desc:"1M G",check:()=>data.money>=1000000},
 
-// 隠し
 { name:"ブラックホール",hidden:true,check:()=>data.money<0},
 { name:"ギャンブラー",hidden:true,check:()=>data.totalBuys>=500},
 { name:"ミント神",hidden:true,check:()=>data.mint>=5000},
 { name:"宇宙覇者",hidden:true,check:()=>data.money>=10000000},
 { name:"株マスター",hidden:true,check:()=>data.stocks.every(s=>s.owned>0)}
-];
-{
-name:"初めての投資",
-desc:"株を1回購入する",
-check:()=>data.totalBuys>=1
-},
-{
-name:"資産家",
-desc:"所持金20000G",
-check:()=>data.money>=20000
-},
-{
-name:"株コレクター",
-desc:"株を100株保有",
-check:()=>data.stocks.some(s=>s.owned>=100)
-}
 ];
 
 function openAchievements(){
