@@ -707,18 +707,6 @@ document.getElementById("gachaResult").innerText="🎉 "+result;
 updateUI();
 }
 
-const result=mints[Math.floor(Math.random()*mints.length)];
-
-if(!data.mintInventory[result]) data.mintInventory[result]=0;
-
-data.mintInventory[result]++;
-
-document.getElementById("gachaResult").innerText=result;
-
-updateUI();
-
-}
-
 function openMint(){
 
 document.getElementById("mintScreen").style.display="block";
@@ -760,8 +748,5 @@ checkPriceUpdate();
 
 });
 </script>
-    
- <div id="tooltip"></div> 
-<div id="achievementPopup"></div>
 </body>
 </html>
