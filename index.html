@@ -671,7 +671,7 @@ const mintTable = [
 {name:"ブラックホールミント",rate:1}
 ];
     
-function gacha(){
+function spinGacha(){
 
 if(data.mint < 50){
 alert("ミントが足りません");
@@ -680,16 +680,16 @@ return;
 
 data.mint -= 50;
 
-let rand = Math.random() * 100;
+let rand = Math.random()*100;
 let total = 0;
 let result = "";
 
-for(let mint of mintTable){
+for(let m of mintTable){
 
-total += mint.rate;
+total += m.rate;
 
 if(rand <= total){
-result = mint.name;
+result = m.name;
 break;
 }
 
@@ -701,10 +701,9 @@ data.mintInventory[result] = 0;
 
 data.mintInventory[result]++;
 
-alert("🎉 " + result + " を獲得！");
+document.getElementById("gachaResult").innerText="🎉 "+result;
 
 updateUI();
-
 }
 
 const result=mints[Math.floor(Math.random()*mints.length)];
@@ -760,12 +759,6 @@ checkPriceUpdate();
 
 });
 </script>
-    
-<div id="achievementScreen" style="display:none;">
-<h2>🏆 実績</h2>
-<div id="achievementList"></div>
-<button onclick="closeAchievements()">閉じる</button>
-</div>
     
  <div id="tooltip"></div> 
 <div id="achievementPopup"></div>
