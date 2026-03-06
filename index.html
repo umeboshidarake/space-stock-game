@@ -54,10 +54,27 @@ align-items: center;
 gap: 8px;
 }
 
-.menu-btn:hover {
+.menu-btn:hover:not(:disabled) {
 background: linear-gradient(45deg, #3b0764, #7e22ce);
 box-shadow: 0 0 20px #a855f7, inset 0 0 15px #c084fc;
 transform: translateY(-2px);
+color: white;
+}
+
+.menu-btn:disabled {
+opacity: 0.5;
+cursor: not-allowed;
+}
+
+/* 破壊ボタン専用スタイル */
+.destroy-btn {
+border-color: #ef4444;
+color: #fca5a5;
+box-shadow: 0 0 10px rgba(239, 68, 68, 0.3), inset 0 0 10px rgba(239, 68, 68, 0.2);
+}
+.destroy-btn:hover:not(:disabled) {
+background: linear-gradient(45deg, #7f1d1d, #b91c1c);
+box-shadow: 0 0 20px #ef4444, inset 0 0 15px #f87171;
 color: white;
 }
 
@@ -278,12 +295,14 @@ margin-bottom: 15px;
     <button class="menu-btn" onclick="openMint()">💎 ミント</button>
     <button class="menu-btn" onclick="openBrew()">🧪 醸造</button>
     <button class="menu-btn" onclick="openBag()">🎒 バッグ</button>
+    <button class="menu-btn destroy-btn" onclick="openDestroy()">💥 破壊</button>
 </div>
 
 <div class="status-bar">
     <div>💰 所持金: <span id="money"></span>G</div>
     <div>⭐ ポイント: <span id="points"></span></div>
     <div>💎 ミント: <span id="mint"></span></div>
+    <div>👽 異星のミント: <span id="alienMints"></span></div>
     <div>⏳ 変動まで: <span id="timer"></span></div>
 </div>
 
@@ -309,7 +328,10 @@ margin-bottom: 15px;
     <div class="modal-content" style="text-align:center;">
         <h2 style="margin-top:0;">🎰 SPACE GACHA</h2>
         <div id="gachaResult" style="font-size:40px; margin:30px 0; text-shadow:0 0 20px #a855f7;">READY</div>
-        <button id="gachaBtn" class="menu-btn" style="margin:0 auto;" onclick="spinGacha()">回す (50ミント)</button>
+        <div style="display:flex; gap:10px; justify-content:center;">
+            <button id="gachaBtn" class="menu-btn" onclick="spinGacha(1)">1回 (20ミント)</button>
+            <button id="gacha10Btn" class="menu-btn" onclick="spinGacha(10)">10連 (200ミント)</button>
+        </div>
         <button class="modal-close" onclick="closeScreen('gachaScreen')">閉じる</button>
     </div>
 </div>
@@ -377,8 +399,8 @@ const potionEffects = {
         for(let i=0; i<20; i++) updatePrices(true);
         updateUI();
     }},
-    "✨ 奇跡の雫": { desc: "所持金 +1,000,000G、ポイント +50,000P を得る奇跡の薬", type: "instant", action: () => { data.money += 1000000; data.points += 50000; } },
-    "❓ 異質なポーション": { desc: "謎の組み合わせで生まれたポーション。今はまだ何も起きないようだ…", type: "none", action: () => {} }
+    "✨ 奇跡の雫": { desc: "所持金 +1,000,000G、ポイント +50,000P を得る", type: "instant", action: () => { data.money += 1000000; data.points += 50000; } },
+    "❓ 異質なポーション": { desc: "2分間、世界を「破壊」する権利を得る...", type: "buff", duration: 120000 }
 };
 
 if(data){
@@ -390,7 +412,12 @@ if(data){
     if(!data.potions) data.potions = {};
     if(!data.activeBuffs) data.activeBuffs = {};
     
-    // 宇宙ミント -> ギャラクシーミントの互換性パッチ
+    // 新機能用の変数初期化
+    if(data.brewCount === undefined) data.brewCount = 0;
+    if(data.alienPotionCount === undefined) data.alienPotionCount = 0;
+    if(data.alienMints === undefined) data.alienMints = 0;
+    
+    // 互換性パッチ
     if(data.mintInventory["宇宙ミント"]){
         data.mintInventory["ギャラクシーミント"] = (data.mintInventory["ギャラクシーミント"] || 0) + data.mintInventory["宇宙ミント"];
         delete data.mintInventory["宇宙ミント"];
@@ -409,7 +436,8 @@ if(data){
     data={
         nickname:"", money:10000, points:0, mint:0,
         mintInventory:{}, potions:{}, activeBuffs:{}, stocks:[],
-        lastUpdate:Date.now(), totalBuys:0, gachaCount:0, achievementsUnlocked:[]
+        lastUpdate:Date.now(), totalBuys:0, gachaCount:0, achievementsUnlocked:[],
+        brewCount:0, alienPotionCount:0, alienMints:0
     };
 
     for(let i=0;i<10;i++){
@@ -454,6 +482,7 @@ function updateUI(){
     document.getElementById("money").innerText=data.money.toLocaleString();
     document.getElementById("points").innerText=data.points.toLocaleString();
     document.getElementById("mint").innerText=data.mint.toLocaleString();
+    document.getElementById("alienMints").innerText = (data.alienMints || 0).toLocaleString();
 
     const stocksDiv=document.getElementById("stocks");
     stocksDiv.innerHTML="";
@@ -465,6 +494,11 @@ function updateUI(){
         let profitDisplay = "";
         if(stock.owned > 0 && stock.buyPrice > 0){
             let diff = stock.price - stock.buyPrice;
+            // 異星のミントの恩恵をUIにも表示
+            if(diff > 0 && data.alienMints > 0){
+                let bonus = Math.floor(diff * 0.02 * data.alienMints);
+                diff += bonus; 
+            }
             let sign = diff >= 0 ? "+" : "";
             let color = diff >= 0 ? "lime" : "red";
             profitDisplay = `<span style="color:${color}; font-size:12px;">(${sign}${diff.toLocaleString()}G/株)</span>`;
@@ -546,12 +580,20 @@ function sellStock(i,amount){
     if(stock.owned<amount) return;
 
     const sellPrice = stock.price;
-    const profit = (sellPrice - stock.buyPrice) * amount;
+    const diff = sellPrice - stock.buyPrice;
+    let bonus = 0;
+    
+    // 異星のミントの効果計算（売却益の増加）
+    if(diff > 0 && data.alienMints > 0) {
+        bonus = Math.floor(diff * 0.02 * data.alienMints);
+    }
 
-    data.money += sellPrice * amount;
+    const totalSaleValue = (sellPrice + bonus) * amount;
+    data.money += totalSaleValue;
 
-    if(profit > 0){
-        let mintGain = Math.max(1, Math.floor(profit / 10));
+    const totalProfit = (diff + bonus) * amount;
+    if(totalProfit > 0){
+        let mintGain = Math.max(1, Math.floor(totalProfit / 10));
         if(isBuffActive("💎 ミントブースト")) mintGain *= 2;
         data.mint += mintGain;
     }
@@ -595,10 +637,7 @@ function updatePrices(skipUI = false){
 
         let change = (Math.random() - 0.5) * volatility;
         
-        // 好景気バフ：マイナスに振れにくく、プラスに振れやすくする
         if(isBull) change = (Math.random() - 0.2) * volatility; 
-        
-        // 防御バフ：下落幅を半減
         if(change < 0 && isProtect) change *= 0.5;
 
         stock.price = Math.max(10, Math.floor(stock.price + change));
@@ -630,6 +669,51 @@ function updateTimer(){
 
 function isBuffActive(buffName){
     return data.activeBuffs[buffName] && data.activeBuffs[buffName] > Date.now();
+}
+
+/* 破壊システム */
+function openDestroy() {
+    if (!isBuffActive("❓ 異質なポーション")) {
+        alert("今はまだ押しても反応しない...。\n異質なポーションの効果中のみ「破壊」が可能になるようだ。");
+        return;
+    }
+    if (confirm("【警告】\n本当に世界を破壊しますか？\n\n実績と異星のミント以外、すべて（所持金、株、アイテム、バフ）が初期化されます。\n※持っている全ミント（所持ポイント＋アイテム合計）10個につき、異星のミントを1つ獲得します。")) {
+        doDestroy();
+    }
+}
+
+function doDestroy() {
+    // ミント総数を計算
+    let totalMints = data.mint;
+    for(let m in data.mintInventory) {
+        totalMints += data.mintInventory[m];
+    }
+    let gained = Math.max(1, Math.floor(totalMints / 10));
+    
+    // 異星のミント付与
+    data.alienMints += gained;
+    
+    // データ初期化 (実績、永続カウンター、異星ミント以外)
+    data.money = 10000;
+    data.points = 0;
+    data.mint = 0;
+    data.mintInventory = {};
+    data.potions = {};
+    data.activeBuffs = {};
+    
+    // 株価のリセット
+    data.stocks.forEach((stock, i) => {
+        let initialPrice = Math.floor(stockTemplates[i].basePrice * (0.9 + Math.random() * 0.2));
+        stock.price = initialPrice;
+        stock.owned = 0;
+        stock.unlocked = i < 3;
+        stock.history = [initialPrice];
+        stock.buyPrice = 0;
+    });
+
+    showNotification(`💥 世界が崩壊し、再構築されました...\n👽 異星のミントを ${gained} 個獲得しました！`);
+    updateUI();
+    save();
 }
 
 function drawAllGraph(){
@@ -714,10 +798,15 @@ const achievements=[
     {name:"株コレクター",desc:"1つの株を100株保有",check:()=>data.stocks.some(s=>s.owned>=100)},
     {name:"宇宙投資家",desc:"全株解放",check:()=>data.stocks.every(s=>s.unlocked)},
     {name:"ミント収集家",desc:"100ミント到達",check:()=>data.mint>=100},
-    {name:"ガチャ体験",desc:"ガチャでミントを1個獲得",check:()=>data.gachaCount>=1},
-    {name:"ミント好き",desc:"ガチャでミントを10個獲得",check:()=>data.gachaCount>=10},
-    {name:"ガチャジャンキー",desc:"ガチャでミントを100個獲得",check:()=>data.gachaCount>=100},
-    {name:"ポーション初醸造",desc:"ポーションを初めて作る",check:()=>Object.keys(data.potions).length > 0},
+    {name:"ガチャ体験",desc:"ガチャを引く",check:()=>data.gachaCount>=1},
+    {name:"ガチャジャンキー",desc:"ガチャを100回引く",check:()=>data.gachaCount>=100},
+    // 新規実績
+    {name:"見習い錬金術師",desc:"ポーションを1回醸造",check:()=>data.brewCount>=1},
+    {name:"熟練錬金術師",desc:"ポーションを25回醸造",check:()=>data.brewCount>=25},
+    {name:"マスターアルケミスト",desc:"ポーションを50回醸造",check:()=>data.brewCount>=50},
+    {name:"未知との遭遇",desc:"異質なポーションを1回作成",check:()=>data.alienPotionCount>=1},
+    {name:"深淵を覗く者",desc:"異質なポーションを3回作成",check:()=>data.alienPotionCount>=3},
+    {name:"世界の理を外れし者",desc:"異質なポーションを5回作成",check:()=>data.alienPotionCount>=5},
     {name:"隠し: UME&TUKE",hidden:true,check:()=>data.nickname==="UME&TUKE"},
     {name:"ブラックホール",hidden:true,check:()=>data.money<0}
 ];
@@ -749,9 +838,9 @@ function openAchievements(){
 }
 
 const mintTable = [
-    {name:"ベーシックミント",rate:15}, {name:"ウォーターミント",rate:7}, {name:"チョコチップミント",rate:3},
-    {name:"ブラッドミント",rate:1}, {name:"ブルーミント",rate:20}, {name:"レッドミント",rate:20},
-    {name:"グリーンミント",rate:20}, {name:"パープルミント",rate:8}, {name:"ゴールドミント",rate:5},
+    {name:"ベーシックミント",rate:19}, {name:"ウォーターミント",rate:5}, {name:"チョコチップミント",rate:3},
+    {name:"ブラッドミント",rate:1}, {name:"青ミント",rate:20}, {name:"赤ミント",rate:20},
+    {name:"緑ミント",rate:20}, {name:"紫ミント",rate:7}, {name:"金ミント",rate:4},
     {name:"ギャラクシーミント",rate:0.5}, {name:"ブラックホールミント",rate:0.5}
 ];
 
@@ -773,46 +862,60 @@ function openMint(){
     if(!hasMint) list.innerHTML="<p>まだミントを持っていません。株で利益を出してガチャを回そう！</p>";
 }
 
-function spinGacha(){
+function spinGacha(times){
     if(isGachaSpinning) return;
-    if(data.mint < 50){ alert("ミントが足りません"); return; }
-    data.mint -= 50;
+    const cost = 20 * times;
+    if(data.mint < cost){ alert("ミントが足りません"); return; }
+    
+    data.mint -= cost;
     isGachaSpinning = true;
     updateUI();
     document.getElementById("gachaBtn").disabled = true;
+    document.getElementById("gacha10Btn").disabled = true;
 
     const resultBox=document.getElementById("gachaResult");
     const names=mintTable.map(m=>m.name);
     let count=0;
 
     const anim=setInterval(()=>{
-        resultBox.innerText=names[Math.floor(Math.random()*names.length)];
+        resultBox.innerText = times === 1 ? names[Math.floor(Math.random()*names.length)] : "✨ ガチャ回転中... ✨";
         count++;
         if(count>20){
             clearInterval(anim);
-            let rand=Math.random()*100;
-            let total=0; let result="";
-            for(let m of mintTable){
-                total+=m.rate;
-                if(rand<=total){ result=m.name; break; }
-            }
-            if(!data.mintInventory[result]) data.mintInventory[result]=0;
-            data.mintInventory[result]++;
-            data.gachaCount++;
             
-            resultBox.innerText="✨ "+result+" ✨";
+            let results = {};
+            for(let i=0; i<times; i++) {
+                let rand=Math.random()*100;
+                let total=0; let drop="";
+                for(let m of mintTable){
+                    total+=m.rate;
+                    if(rand<=total){ drop=m.name; break; }
+                }
+                results[drop] = (results[drop] || 0) + 1;
+                if(!data.mintInventory[drop]) data.mintInventory[drop]=0;
+                data.mintInventory[drop]++;
+                data.gachaCount++;
+            }
+            
+            if(times === 1) {
+                resultBox.innerText="✨ "+ Object.keys(results)[0] +" ✨";
+            } else {
+                let resStr = Object.entries(results).map(([k,v]) => `${k} x${v}`).join("<br>");
+                resultBox.innerHTML = `<div style="font-size:24px; line-height:1.5;">${resStr}</div>`;
+            }
+            
             isGachaSpinning = false;
             document.getElementById("gachaBtn").disabled = false;
+            document.getElementById("gacha10Btn").disabled = false;
             checkAchievements(); save();
         }
     },80);
 }
 
-// 🧪 ミントのレアリティスコア（値が高いほどレア）
 const mintScores = {
     "青ミント": 2, "赤ミント": 2, "ベーシックミント": 2, "緑ミント": 2,
-    "ウォーターミント": 5, "紫ミント": 4, "金ミント": 6, "チョコチップミント": 10,
-    "ギャラクシーミント": 30, "ブラッドミント": 28, "ブラックホールミント": 30
+    "ウォーターミント"6: , "紫ミント": 4, "金ミント": 7, "チョコチップミント": 10,
+    "ギャラクシーミント": 15, "ブラッドミント": 30, "ブラックホールミント": 30
 };
 
 function openBrew(){
@@ -857,29 +960,25 @@ function doBrew(){
 
     let result = "";
 
-    // 🌟 特殊レシピ判定 (ベーシック + ブラッド + ギャラクシー)
+    // 🌟 特殊レシピ
     if ((m1 === "ブラッドミント" && m2 === "ギャラクシーミント") || (m1 === "ギャラクシーミント" && m2 === "ブラッドミント")) {
         result = "❓ 異質なポーション";
+        data.alienPotionCount++;
     } else {
-        // 通常のスコアに基づく抽選
         let score = (mintScores[m1] || 1) + (mintScores[m2] || 1);
         let pool = [];
 
-        if (score < 10) {
-            pool = ["⭐ 知識の霊薬", "📈 ハイパードライブ薬", "💰 黄金の雫"];
-        } else if (score < 20) {
-            pool = ["💰 黄金の雫", "🛡 プロテクトジェル", "⏳ タイムワープ薬"];
-        } else if (score < 40) {
-            pool = ["💎 ミントブースト", "🚀 ギャラクシーブル", "⏳ タイムワープ薬"];
-        } else {
-            pool = ["🚀 ギャラクシーブル", "✨ 奇跡の雫", "💎 ミントブースト"];
-        }
+        if (score < 10) pool = ["⭐ 知識の霊薬", "📈 ハイパードライブ薬", "💰 黄金の雫"];
+        else if (score < 20) pool = ["💰 黄金の雫", "🛡 プロテクトジェル", "⏳ タイムワープ薬"];
+        else if (score < 40) pool = ["💎 ミントブースト", "🚀 ギャラクシーブル", "⏳ タイムワープ薬"];
+        else pool = ["🚀 ギャラクシーブル", "✨ 奇跡の雫", "💎 ミントブースト"];
         
         result = pool[Math.floor(Math.random() * pool.length)];
     }
 
     if(!data.potions[result]) data.potions[result] = 0;
     data.potions[result]++;
+    data.brewCount++;
     
     showNotification("🧪 " + result + " を醸造しました！");
     checkAchievements();
@@ -918,11 +1017,6 @@ function usePotion(pName){
     if(!data.potions[pName] || data.potions[pName] <= 0) return;
     
     const effect = potionEffects[pName];
-    if(effect.type === "none"){
-        showNotification("何も起きなかった…");
-        return; // 消費させない、または消費させたい場合は上のif文の下に移動
-    }
-
     data.potions[pName]--;
 
     if(effect.type === "instant"){
