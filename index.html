@@ -23,6 +23,23 @@ body{ margin:0; font-family:'Orbitron',sans-serif; background-color: #080212; co
     100% { transform: translate(-20px, 40px) scale(0.9); }
 }
 
+/* --- 超激レア演出のアニメーション --- */
+@keyframes superRareGlow {
+    0% { text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff0000; transform: scale(1) rotate(-2deg); color: #fff; }
+    50% { text-shadow: 0 0 30px #ff00ff, 0 0 50px #ff0000, 0 0 80px #ff0000; transform: scale(1.1) rotate(2deg); color: #ffd700; }
+    100% { text-shadow: 0 0 10px #ff00ff, 0 0 20px #ff0000; transform: scale(1) rotate(-2deg); color: #fff; }
+}
+.super-rare-drop {
+    animation: superRareGlow 0.3s infinite alternate !important;
+}
+.super-rare-text {
+    color: #ffd700;
+    text-shadow: 0 0 10px #ff0000, 0 0 20px #ff00ff;
+    font-weight: bold;
+    animation: superRareGlow 0.3s infinite alternate;
+    display: inline-block;
+}
+
 /* --- UIスタイル --- */
 h1{ text-align:center; font-size:40px; color:#e9d5ff; text-shadow:0 0 25px #a855f7,0 0 50px #7e22ce; }
 #game{ padding:20px; max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
@@ -30,6 +47,14 @@ h1{ text-align:center; font-size:40px; color:#e9d5ff; text-shadow:0 0 25px #a855
 .menu-btn { background: linear-gradient(45deg, #1f0b3b, #3b0764); border: 2px solid #a855f7; color: #e9d5ff; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 0 10px rgba(168, 85, 247, 0.3), inset 0 0 10px rgba(168, 85, 247, 0.2); transition: all 0.3s ease; display: flex; align-items: center; gap: 8px; }
 .menu-btn:hover:not(:disabled) { background: linear-gradient(45deg, #3b0764, #7e22ce); box-shadow: 0 0 20px #a855f7, inset 0 0 15px #c084fc; transform: translateY(-2px); color: white; }
 .menu-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* STARTボタンの伸びを修正 */
+#nicknameScreen .menu-btn {
+    height: 60px;
+    align-self: center;
+    flex: none;
+}
+
 .destroy-btn { border-color: #ef4444; color: #fca5a5; box-shadow: 0 0 10px rgba(239, 68, 68, 0.3), inset 0 0 10px rgba(239, 68, 68, 0.2); }
 .destroy-btn:hover:not(:disabled) { background: linear-gradient(45deg, #7f1d1d, #b91c1c); box-shadow: 0 0 20px #ef4444, inset 0 0 15px #f87171; color: white; }
 .status-bar { display: flex; flex-wrap: wrap; gap: 20px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(168,85,247,0.3); margin-bottom: 20px; font-size: 18px; backdrop-filter: blur(5px); }
@@ -59,6 +84,20 @@ canvas{ background:rgba(0,0,0,0.6); border:1px solid rgba(168,85,247,0.3); borde
 select { background: black; color: white; border: 1px solid #a855f7; padding: 10px; font-size: 16px; border-radius: 5px; width: 100%; margin-bottom: 15px; outline:none; }
 .tutorial-section { margin-bottom: 20px; border-left: 4px solid #a855f7; padding-left: 15px; background: rgba(168,85,247,0.05); padding: 15px; border-radius: 0 10px 10px 0; }
 .tutorial-section h3 { margin-top: 0; color: #e9d5ff; display: flex; align-items: center; gap: 10px; }
+
+/* ガチャ排出率エリア */
+#gachaRates {
+    font-size: 13px;
+    color: #e9d5ff;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid #a855f7;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    text-align: left;
+    max-height: 120px;
+    overflow-y: auto;
+}
 </style>
 </head>
 
@@ -143,8 +182,11 @@ select { background: black; color: white; border: 1px solid #a855f7; padding: 10
 
 <div id="gachaScreen" class="modal-screen">
     <div class="modal-content" style="text-align:center;">
-        <h2 style="margin-top:0;">🎰 SPACE GACHA</h2>
-        <div id="gachaResult" style="font-size:40px; margin:30px 0; text-shadow:0 0 30px #a855f7; min-height:60px;">READY</div>
+        <h2 style="margin-top:0; margin-bottom:10px;">🎰 SPACE GACHA</h2>
+        <div id="gachaRates"></div>
+        
+        <div id="gachaResult" style="font-size:36px; margin:20px 0; text-shadow:0 0 30px #a855f7; min-height:50px;">READY</div>
+        
         <div style="display:flex; gap:15px; justify-content:center;">
             <button id="gachaBtn" class="menu-btn" onclick="spinGacha(1)">1回 (15破片)</button>
             <button id="gacha10Btn" class="menu-btn" onclick="spinGacha(10)">10連 (150破片)</button>
@@ -191,7 +233,6 @@ let timerInterval = null;
 let priceCheckTimeout = null;
 let isGachaSpinning = false;
 
-// 銘柄リスト
 const stockTemplates = [
     { name: "アストロ通信", basePrice: 300, personality: "【安定】インフラ系。値動きが緩やか。", vol: 0.02 },
     { name: "スターダスト鉱業", basePrice: 500, personality: "【資源】宇宙資源の発掘。堅実に伸びる。", vol: 0.05 },
@@ -205,7 +246,6 @@ const stockTemplates = [
     { name: "オメガ・ホールディングス", basePrice: 10000, personality: "【覇者】宇宙経済を牛耳る超大企業。", vol: 0.05 }
 ];
 
-// ポーションの効果（チョコミント効果＆倍率引数 m を追加！）
 const potionEffects = {
     "💰 黄金の雫": { desc: "所持金即座に +100,000G", type: "instant", action: (m=1) => { data.money += 100000 * m; } },
     "⭐ 知識の霊薬": { desc: "ポイント即座に +5,000P", type: "instant", action: (m=1) => { data.points += 5000 * m; } },
@@ -237,11 +277,9 @@ if(data){
     if(data.alienPotionCount === undefined) data.alienPotionCount = 0;
     if(data.alienMints === undefined) data.alienMints = 0;
     if(data.tutorialSeen === undefined) data.tutorialSeen = false;
-    
     if(!data.discoveredMints) data.discoveredMints = [];
     if(!data.discoveredPotions) data.discoveredPotions = [];
 
-    // 【セーブデータ互換性処理】旧漢字ミント名をカタカナに変換
     const renameMap = {"青ミント":"ブルーミント", "赤ミント":"レッドミント", "緑ミント":"グリーンミント", "紫ミント":"パープルミント", "金ミント":"ゴールドミント"};
     for(let oldName in renameMap){
         if(data.mintInventory[oldName]){
@@ -581,7 +619,6 @@ function showNotification(text){
     setTimeout(() => { popup.style.opacity = "0"; popup.style.transform = "translateX(100px)"; setTimeout(() => popup.remove(), 500); }, 4000);
 }
 
-// チョコミン党の実績を追加！
 const achievements=[
     {name:"初投資",desc:"株を1回買う",check:()=>data.totalBuys>=1},
     {name:"トレーダー",desc:"株を100回購入",check:()=>data.totalBuys>=100},
@@ -644,7 +681,31 @@ function getActiveMintTable() {
     }
 }
 
-function openGacha() { openScreen("gachaScreen"); }
+// ★ ガチャ画面を開くときに「排出率」を表示するように！
+function openGacha() { 
+    openScreen("gachaScreen");
+    const ratesDiv = document.getElementById("gachaRates");
+    const currentTable = getActiveMintTable();
+    
+    let ratesHtml = "<div style='text-align:center; font-weight:bold; margin-bottom:10px;'>【提供割合】</div>";
+    currentTable.forEach(m => {
+        let color = "#e9d5ff"; // 通常は薄い紫
+        // 超激レアの場合は文字色を金色にする
+        if(["ギャラクシーミント", "ブラッドミント", "ブラックホールミント"].includes(m.name)){
+            color = "#ffd700"; 
+        }
+        ratesHtml += `<div style="width:50%; box-sizing:border-box; float:left; text-align:left; color:${color};">${m.name}: ${m.rate}%</div>`;
+    });
+    ratesHtml += `<div style="clear:both;"></div>`; // 崩れ防止
+    
+    ratesDiv.innerHTML = ratesHtml;
+    
+    // 表示リセット
+    const resultBox = document.getElementById("gachaResult");
+    resultBox.className = "";
+    resultBox.innerText = "READY";
+}
+
 function openMint(){
     openScreen("mintScreen");
     const list=document.getElementById("mintList"); list.innerHTML="";
@@ -660,6 +721,7 @@ function openMint(){
     if(!hasMint) list.innerHTML="<p>まだミントを持っていません。株で利益を出してガチャを回そう！</p>";
 }
 
+// ★ ガチャを回す処理（超激レア確定演出を追加！）
 function spinGacha(times){
     if(isGachaSpinning) return;
     const cost = 15 * times;
@@ -674,6 +736,9 @@ function spinGacha(times){
     const names=currentMintTable.map(m=>m.name);
     let count=0;
 
+    // クラスをリセット
+    resultBox.className = "";
+
     const anim=setInterval(()=>{
         resultBox.innerText = times === 1 ? names[Math.floor(Math.random()*names.length)] : "✨ ガチャ回転中... ✨";
         count++;
@@ -681,6 +746,9 @@ function spinGacha(times){
             clearInterval(anim);
             
             let results = {};
+            let hasSuperRare = false;
+            const superRares = ["ギャラクシーミント", "ブラッドミント", "ブラックホールミント"];
+
             for(let i=0; i<times; i++) {
                 let rand=Math.random()*100;
                 let total=0; let drop="";
@@ -693,14 +761,27 @@ function spinGacha(times){
                 data.mintInventory[drop]++;
                 data.gachaCount++;
                 
+                // 超激レアを引いたかどうかの判定
+                if(superRares.includes(drop)) hasSuperRare = true;
+                
                 if(!data.discoveredMints.includes(drop)) data.discoveredMints.push(drop);
             }
             
             if(times === 1) {
-                resultBox.innerText="✨ "+ Object.keys(results)[0] +" ✨";
+                const dropName = Object.keys(results)[0];
+                resultBox.innerText="✨ "+ dropName +" ✨";
+                // 単発で超激レアが出た場合、全体を光らせる
+                if(hasSuperRare) resultBox.className = "super-rare-drop";
             } else {
-                let resStr = Object.entries(results).map(([k,v]) => `${k} x${v}`).join("<br>");
+                let resStr = Object.entries(results).map(([k,v]) => {
+                    // 10連の場合、超激レアの行だけ個別に光らせる
+                    if(superRares.includes(k)) return `<span class="super-rare-text">${k} x${v}</span>`;
+                    return `${k} x${v}`;
+                }).join("<br>");
                 resultBox.innerHTML = `<div style="font-size:24px; line-height:1.5;">${resStr}</div>`;
+                
+                // 10連で超激レアが含まれていれば、枠全体も少し揺らす
+                if(hasSuperRare) resultBox.className = "super-rare-drop";
             }
             
             isGachaSpinning = false;
@@ -812,13 +893,11 @@ function openBag(){
     if(!hasPotion) { list.innerHTML = "<p>ポーションを持っていません。ミントを醸造して作ってみよう！</p>"; }
 }
 
-// チョコミントの効果判定と倍率（m）処理を追加
 function usePotion(pName){
     if(!data.potions[pName] || data.potions[pName] <= 0) return;
     const effect = potionEffects[pName]; 
     data.potions[pName]--;
 
-    // チョコミントが発動中で、かつ使うポーションがチョコミント以外なら効果を2倍にする
     let isChocoActive = isBuffActive("🍦 チョコミントポーション") && pName !== "🍦 チョコミントポーション";
     let m = isChocoActive ? 2 : 1;
 
