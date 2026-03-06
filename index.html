@@ -178,16 +178,15 @@ margin:10px;
 border-radius:10px;
 }
 
-#achievementPopup{
+#notificationContainer {
 position:fixed;
 bottom:20px;
 right:20px;
-background:#7e22ce;
-padding:15px;
-border-radius:10px;
-display:none;
-box-shadow:0 0 20px #a855f7;
-z-index: 5000;
+z-index:5000;
+display:flex;
+flex-direction:column;
+gap:10px;
+pointer-events:none;
 }
 
 #gachaScreen{
@@ -254,7 +253,7 @@ border-radius:10px;
 </div>
 
 <div id="tooltip"></div>
-<div id="achievementPopup"></div>
+<div id="notificationContainer"></div>
 
 <div id="achievementScreen">
 <h2>🏆 実績</h2>
@@ -281,7 +280,40 @@ let timerInterval = null;
 let priceCheckTimeout = null;
 let isGachaSpinning = false;
 
-if(!data){
+// 新しい株の固有データ（名前・初期価格・性格）
+const stockTemplates = [
+    { name: "アストロ通信", basePrice: 300, personality: "【安定】インフラ系。値動きが緩やか。" },
+    { name: "スターダスト鉱業", basePrice: 500, personality: "【資源】宇宙資源の発掘。堅実に伸びる。" },
+    { name: "ワープドライブ社", basePrice: 1200, personality: "【成長】新技術ベンチャー。期待値が高い。" },
+    { name: "オールドアース不動産", basePrice: 2000, personality: "【衰退】旧地球の土地管理。下落気味。" },
+    { name: "ギャラクシー・バイオ", basePrice: 800, personality: "【バブル】医療系。乱高下が激しい。" },
+    { name: "AIコア・システムズ", basePrice: 3500, personality: "【安定】AI管理の巨大企業。高値安定。" },
+    { name: "未知文明発掘", basePrice: 100, personality: "【超危険】ギャンブル銘柄。紙屑か宝か。" },
+    { name: "クアンタム・エナジー", basePrice: 2500, personality: "【成長】次世代エネルギー。着実な成長。" },
+    { name: "スペース・ツーリズム", basePrice: 600, personality: "【流行】宇宙旅行サービス。トレンド次第。" },
+    { name: "オメガ・ホールディングス", basePrice: 10000, personality: "【覇者】宇宙経済を牛耳る超大企業。" }
+];
+
+// 古いセーブデータとの互換性パッチ
+if(data){
+    if(!data.achievementsUnlocked) data.achievementsUnlocked = [];
+    if(!data.mintInventory) data.mintInventory = {};
+    if(data.totalBuys === undefined) data.totalBuys = 0;
+    if(data.mint === undefined) data.mint = 0;
+    if(data.gachaCount === undefined) data.gachaCount = 0; // 新規追加：ガチャ回数
+    
+    data.stocks.forEach((stock, i) => {
+        if(stock.buyPrice === undefined) stock.buyPrice = stock.price;
+        if(stock.unlockCost === undefined) stock.unlockCost = 500 + i * 300;
+        if(stock.history === undefined) stock.history = [stock.price];
+        
+        // 古い「STOCK-〇」という名前なら、新しい名前にアップデート（価格はそのまま引き継ぐ）
+        if(stock.name.startsWith("STOCK-")) {
+            stock.name = stockTemplates[i].name;
+            stock.personality = stockTemplates[i].personality;
+        }
+    });
+} else {
     data={
         nickname:"",
         money:10000,
@@ -291,37 +323,26 @@ if(!data){
         stocks:[],
         lastUpdate:Date.now(),
         totalBuys:0,
+        gachaCount:0, // 新規追加：ガチャ回数
         achievementsUnlocked:[]
     };
 
-    const personalities=[
-        "安定志向の巨大企業。市場の守護者。",
-        "乱高下する危険銘柄。ハイリスク。",
-        "急成長中の宇宙スタートアップ。",
-        "衰退気味の老舗企業。",
-        "バブル気味の話題株。",
-        "AI制御の未来企業。",
-        "異星資源開発会社。",
-        "量子技術ベンチャー。",
-        "エネルギー革命銘柄。",
-        "未来医療テック企業。"
-    ];
-
-    const types=["stable","volatile","growth","decline","bubble","volatile","growth","stable","growth","stable"];
-
     for(let i=0;i<10;i++){
+        let template = stockTemplates[i];
+        // 基礎価格を中心に少しだけランダムにばらけさせる
+        let initialPrice = Math.floor(template.basePrice * (0.9 + Math.random() * 0.2));
+
         data.stocks.push({
-            name:"STOCK-"+(i+1),
-            price:Math.floor(Math.random()*500)+500,
-            owned:0,
-            unlocked:i<3,
-            unlockCost:500 + i*300,
-            personality:personalities[i],
-            personalityType:types[i],
-            history:[500],
-            buyPrice:0,
-            canSell:true,
-            visible:true
+            name: template.name,
+            price: initialPrice,
+            owned: 0,
+            unlocked: i < 3,
+            unlockCost: 500 + i * 300,
+            personality: template.personality,
+            history: [initialPrice],
+            buyPrice: 0,
+            canSell: true,
+            visible: true
         });
     }
     save();
@@ -338,7 +359,6 @@ function startGame(){
         name=data.nickname;
     }
     
-    // 未入力の場合はデフォルト名を設定（ここで処理が止まるバグを修正）
     if(name.trim()=="") {
         name = "名無しトレーダー";
     }
@@ -350,6 +370,7 @@ function startGame(){
     document.getElementById("game").style.display="block";
     document.getElementById("playerName").innerText=data.nickname;
 
+    checkAchievements(); // 名前入力時の実績チェック用
     updateUI();
     startTimers();
 }
@@ -380,8 +401,8 @@ function updateUI(){
         }
 
         card.innerHTML=`
-            <h3>${stock.name}</h3>
-            <p style="font-size:12px; color:#c084fc;">${stock.personality}</p>
+            <h3 style="margin: 0 0 5px 0; font-size:18px;">${stock.name}</h3>
+            <p style="font-size:11px; color:#c084fc; margin-top:0; height:30px;">${stock.personality}</p>
             <p>現在値: ${stock.price}G ${profitDisplay}</p>
             <p>保有: ${stock.owned}株</p>
         `;
@@ -411,11 +432,14 @@ function updateUI(){
             const unlockBtn=document.createElement("button");
             unlockBtn.className="unlockBtn";
             unlockBtn.innerText=stock.unlockCost+"Pで解放";
-            if(data.points < stock.unlockCost){
+            
+            if(data.points >= stock.unlockCost){
+                unlockBtn.disabled = false;
+                unlockBtn.onclick=()=>unlockStock(i);
+            } else {
                 unlockBtn.disabled = true;
                 unlockBtn.style.animation = "none";
             }
-            unlockBtn.onclick=()=>unlockStock(i);
             card.appendChild(unlockBtn);
         }
         stocksDiv.appendChild(card);
@@ -435,7 +459,6 @@ function buyStock(i,amount){
 
     data.money-=cost;
     
-    // 平均取得単価の計算（簡易版）
     if(stock.owned === 0) {
         stock.buyPrice = stock.price;
     } else {
@@ -458,7 +481,7 @@ function sellStock(i,amount){
     data.money += sellPrice * amount;
 
     if(profit > 0){
-        const mintGain = Math.max(1, Math.floor(profit / 10)); // 利益が出れば最低1ミントもらえるように
+        const mintGain = Math.max(1, Math.floor(profit / 10));
         data.mint += mintGain;
     }
 
@@ -480,16 +503,15 @@ function checkPriceUpdate(){
     const now=Date.now();
     const elapsed = now - data.lastUpdate;
 
-    // オフライン放置対応：60秒ごとにまとめて更新（最大30回分）
     if(elapsed >= 60000){
         let updates = Math.floor(elapsed / 60000);
-        if (updates > 30) updates = 30; // 放置しすぎても30回分でストップ
+        if (updates > 30) updates = 30;
         
         for(let i=0; i<updates; i++){
-            updatePrices(true); // UI更新はスキップ
+            updatePrices(true);
         }
-        data.lastUpdate = now - (elapsed % 60000); // 余りの時間を引き継ぐ
-        updateUI(); // まとめてUI更新
+        data.lastUpdate = now - (elapsed % 60000);
+        updateUI();
     }
     
     priceCheckTimeout = setTimeout(checkPriceUpdate, 1000);
@@ -497,9 +519,10 @@ function checkPriceUpdate(){
 
 function updatePrices(skipUI = false){
     data.stocks.forEach(stock=>{
-        // 将来的に personalityType によって変動幅(change)を変えると面白くなります
-        let change=(Math.random()-0.5)*100;
-        stock.price=Math.max(10,Math.floor(stock.price+change));
+        // 基礎価格に基づいて変動幅を変える（高い株ほど大きく動く）
+        let volatility = stock.price * 0.05; 
+        let change = (Math.random() - 0.5) * volatility;
+        stock.price = Math.max(10, Math.floor(stock.price + change));
         stock.history.push(stock.price);
         if(stock.history.length>30) stock.history.shift();
     });
@@ -525,19 +548,18 @@ function drawAllGraph(){
     const colors=["cyan","lime","yellow","orange","red","magenta","white","blue","pink","lightgreen"];
 
     data.stocks.forEach((stock,index)=>{
-        if(!stock.visible || stock.history.length === 0) return;
+        if(!stock.visible || !stock.history || stock.history.length === 0) return;
 
         const max=Math.max(...stock.history, 1);
         const min=Math.min(...stock.history, 0);
         let range = max - min;
-        if(range === 0) range = 1; // ゼロ除算回避
+        if(range === 0) range = 1; 
 
         ctx.beginPath();
         ctx.strokeStyle=colors[index];
         ctx.lineWidth=2;
 
         if(stock.history.length === 1){
-            // 履歴が1つだけの場合は横線を引く
             const y = canvas.height - ((stock.history[0] - min) / range) * canvas.height;
             ctx.moveTo(0, y);
             ctx.lineTo(canvas.width, y);
@@ -570,6 +592,7 @@ function drawLegend(){
     });
 }
 
+// 追加された新しい実績
 const achievements=[
     {name:"初投資",desc:"株を1回買う",check:()=>data.totalBuys>=1},
     {name:"トレーダー",desc:"100回購入",check:()=>data.totalBuys>=100},
@@ -581,6 +604,10 @@ const achievements=[
     {name:"ミント収集家",desc:"100ミント到達",check:()=>data.mint>=100},
     {name:"ミント王",desc:"10,000ミント到達",check:()=>data.mint>=10000},
     {name:"伝説トレーダー",desc:"10,000,000,000G",check:()=>data.money>=10000000000},
+    {name:"ガチャ体験",desc:"ガチャでミントを1個獲得",check:()=>data.gachaCount>=1},
+    {name:"ミント好き",desc:"ガチャでミントを10個獲得",check:()=>data.gachaCount>=10},
+    {name:"ガチャジャンキー",desc:"ガチャでミントを100個獲得",check:()=>data.gachaCount>=100},
+    {name:"隠し: UME&TUKE",hidden:true,check:()=>data.nickname==="UME&TUKE"},
     {name:"ブラックホール",hidden:true,check:()=>data.money<0},
     {name:"ギャンブラー",hidden:true,check:()=>data.totalBuys>=500},
     {name:"ミント神",hidden:true,check:()=>data.mint>=50000},
@@ -589,6 +616,8 @@ const achievements=[
 ];
 
 function checkAchievements(){
+    if(!data.achievementsUnlocked) return;
+    
     achievements.forEach((a,i)=>{
         if(a.check() && !data.achievementsUnlocked.includes(i)){
             data.achievementsUnlocked.push(i);
@@ -606,7 +635,7 @@ function openAchievements(){
         const div=document.createElement("div");
         div.className="achievement";
         if(data.achievementsUnlocked.includes(i)){
-            div.innerText=a.name+" - "+a.desc;
+            div.innerText=a.name+" - "+(a.hidden ? "隠し実績解除！" : a.desc);
         }else{
             div.innerText="？？？？？？？？";
         }
@@ -619,12 +648,33 @@ function closeAchievements(){
 }
 
 function showAchievement(name){
-    const popup=document.getElementById("achievementPopup");
-    popup.innerText="🏆 実績解除: "+name;
-    popup.style.display="block";
-    setTimeout(()=>{
-        popup.style.display="none";
-    },4000);
+    const container = document.getElementById("notificationContainer");
+    
+    const popup = document.createElement("div");
+    popup.style.background = "rgba(126, 34, 206, 0.95)";
+    popup.style.border = "1px solid #a855f7";
+    popup.style.padding = "15px";
+    popup.style.borderRadius = "10px";
+    popup.style.boxShadow = "0 0 20px #a855f7";
+    popup.style.color = "white";
+    popup.style.fontWeight = "bold";
+    popup.style.opacity = "0";
+    popup.style.transform = "translateX(100px)";
+    popup.style.transition = "all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
+    popup.innerText = "🏆 実績解除: " + name;
+    
+    container.appendChild(popup);
+    
+    setTimeout(() => {
+        popup.style.opacity = "1";
+        popup.style.transform = "translateX(0)";
+    }, 10);
+    
+    setTimeout(() => {
+        popup.style.opacity = "0";
+        popup.style.transform = "translateX(100px)";
+        setTimeout(() => popup.remove(), 500);
+    }, 4000);
 }
 
 function openGacha(){
@@ -632,18 +682,23 @@ function openGacha(){
 }
 
 function closeGacha(){
-    if(isGachaSpinning) return; // ガチャ中は閉じられないようにする
+    if(isGachaSpinning) return;
     document.getElementById("gachaScreen").style.display="none";
 }
 
+// 排出率を調整した新しいミントテーブル（合計100%）
 const mintTable = [
-    {name:"青ミント",rate:40},
-    {name:"赤ミント",rate:25},
-    {name:"緑ミント",rate:15},
-    {name:"紫ミント",rate:10},
-    {name:"金ミント",rate:7},
-    {name:"宇宙ミント",rate:2},
-    {name:"ブラックホールミント",rate:1}
+    {name:"ベーシックミント",rate:15},
+    {name:"ウォーターミント",rate:5},
+    {name:"チョコチップミント",rate:4},
+    {name:"ブラッドミント",rate:1},
+    {name:"ブルーミント",rate:20},
+    {name:"レッドミント",rate:20},
+    {name:"グリーンミント",rate:20},
+    {name:"パープルミント",rate:8},
+    {name:"ゴールドミント",rate:5},
+    {name:"ギャラクシーミント",rate:0.5},
+    {name:"ブラックホールミント",rate:1.5}
 ];
     
 function spinGacha(){
@@ -682,10 +737,15 @@ function spinGacha(){
 
             if(!data.mintInventory[result]) data.mintInventory[result]=0;
             data.mintInventory[result]++;
+            data.gachaCount++; // ガチャ回数をカウント
+            
             resultBox.innerText="✨ "+result+" ✨";
             
             isGachaSpinning = false;
             document.getElementById("gachaBtn").disabled = false;
+            
+            checkAchievements(); // 実績の判定
+            save(); // セーブ
         }
     },80);
 }
@@ -714,7 +774,7 @@ function closeMint(){
 }
     
 window.addEventListener("load",()=>{
-    if(data.nickname){
+    if(data && data.nickname){
         document.getElementById("nicknameScreen").style.display="none";
         document.getElementById("game").style.display="block";
         document.getElementById("playerName").innerText=data.nickname;
