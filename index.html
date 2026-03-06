@@ -147,7 +147,7 @@ select { background: black; color: white; border: 1px solid #a855f7; padding: 10
         </div>
         <div class="tutorial-section">
             <h3>🧪 3. ポーションを醸造しよう！</h3>
-            <p>「ベーシックミント」×1 と任意のミント×2 を合成して強力なバフアイテムを作れます。</p>
+            <p>「ベーシックミント」×1 と任意のミント×2 を合成して強力なバフアイテムを作れます。またギャラクシーミントとブラッドミントを組み合わせることでできる「異質なポーション」など特定の条件でしかゲットできないポーションもあります</p>
         </div>
         <div class="tutorial-section">
             <h3>💥 4. 世界の『破壊』と再構築</h3>
@@ -805,7 +805,7 @@ function openBrew(){
     }
     if(!hasAny){ mat1.innerHTML = `<option value="">ミントなし</option>`; mat2.innerHTML = `<option value="">ミントなし</option>`; }
 }
-
+    
 function doBrew(){
     const basicCount = data.mintInventory["ベーシックミント"] || 0;
     const m1 = document.getElementById("brewMat1").value; const m2 = document.getElementById("brewMat2").value;
@@ -819,18 +819,16 @@ function doBrew(){
     data.mintInventory["ベーシックミント"]--; data.mintInventory[m1]--; data.mintInventory[m2]--;
     let result = "";
 
-    const newMints = ["スパイシーミント", "フロストミント", "マダムミント"];
-
     if ((m1 === "ブラッドミント" && m2 === "ギャラクシーミント") || (m1 === "ギャラクシーミント" && m2 === "ブラッドミント")) { result = "❓ 異質なポーション"; data.alienPotionCount++; } 
     else if ((m1 === "ミルクミント" && m2 === "チョコチップミント") || (m1 === "チョコチップミント" && m2 === "ミルクミント")) { result = "🍦 チョコミントポーション"; } 
     else if (data.alienMints > 0 && m1 === "プラネットミント" && m2 === "プラネットミント") { result = "🌍 星の恵み"; } 
     else if (data.alienMints > 0 && m1 === "マグマミント" && m2 === "マグマミント") { result = "🌋 ヴォルカニック・ブル"; } 
     else if (data.alienMints > 0 && m1 === "ソルティミント" && m2 === "ソルティミント") { result = "🧂 ソルトバリア"; } 
-    else if (newMints.includes(m1) || newMints.includes(m2)) {
-        // 新ミントを素材にした場合、33%ずつの確率で新ポーションが完成
-        let pool = ["🌶️ スパイシーサワー", "❄️ フロストエナジー", "💧 マダム・ザ・ウォーター"];
-        result = pool[Math.floor(Math.random() * pool.length)];
-    }
+    // 👇 ここを修正しました！対応するミントを入れると33%で成功します
+    else if ((m1 === "スパイシーミント" || m2 === "スパイシーミント") && Math.random() < 0.33) { result = "🌶️ スパイシーサワー"; }
+    else if ((m1 === "フロストミント" || m2 === "フロストミント") && Math.random() < 0.33) { result = "❄️ フロストエナジー"; }
+    else if ((m1 === "マダムミント" || m2 === "マダムミント") && Math.random() < 0.33) { result = "💧 マダム・ザ・ウォーター"; }
+    // 👆 ここまで
     else {
         let score = (mintScores[m1] || 1) + (mintScores[m2] || 1); let pool = [];
         if (score < 10) pool = ["⭐ 知識の霊薬", "📈 ハイパードライブ薬", "💰 黄金の雫"];
@@ -844,6 +842,7 @@ function doBrew(){
     if(!data.discoveredPotions.includes(result)) data.discoveredPotions.push(result);
     showNotification("🧪 " + result + " を醸造しました！"); checkAchievements(); save(); openBrew(); 
 }
+
 
 function openBag(){
     openScreen("bagScreen"); const list = document.getElementById("bagList"); list.innerHTML = ""; let hasPotion = false;
