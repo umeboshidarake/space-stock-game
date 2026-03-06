@@ -66,7 +66,6 @@ opacity: 0.5;
 cursor: not-allowed;
 }
 
-/* 破壊ボタン専用スタイル */
 .destroy-btn {
 border-color: #ef4444;
 color: #fca5a5;
@@ -273,6 +272,23 @@ border-radius: 5px;
 width: 100%;
 margin-bottom: 15px;
 }
+
+/* チュートリアル用のスタイル */
+.tutorial-section {
+margin-bottom: 20px;
+border-left: 4px solid #a855f7;
+padding-left: 15px;
+background: rgba(168,85,247,0.05);
+padding: 15px;
+border-radius: 0 10px 10px 0;
+}
+.tutorial-section h3 {
+margin-top: 0;
+color: #e9d5ff;
+display: flex;
+align-items: center;
+gap: 10px;
+}
 </style>
 </head>
 
@@ -302,7 +318,7 @@ margin-bottom: 15px;
     <div>💰 所持金: <span id="money"></span>G</div>
     <div>⭐ ポイント: <span id="points"></span></div>
     <div>💎 ミント: <span id="mint"></span></div>
-    <div>👽 異星のミント: <span id="alienMints"></span></div>
+    <div>🌿 異星のミント: <span id="alienMints"></span></div>
     <div>⏳ 変動まで: <span id="timer"></span></div>
 </div>
 
@@ -315,6 +331,38 @@ margin-bottom: 15px;
 </div>
 
 <div id="notificationContainer"></div>
+
+<div id="tutorialScreen" class="modal-screen">
+    <div class="modal-content">
+        <h2 style="margin-top:0; text-align:center; color:#e9d5ff;">🚀 遊び方ガイド</h2>
+        
+        <div class="tutorial-section">
+            <h3>📈 1. 株を売買して稼ごう！</h3>
+            <p>安い時に買い、高い時に売るのが基本です。価格は1分ごとに自動で変動します。<br>
+            株を売って<b>利益を出すと「ミント」を獲得</b>できます！</p>
+        </div>
+
+        <div class="tutorial-section">
+            <h3>🎰 2. ガチャで素材を集めよう！</h3>
+            <p>集めた「ミント」を使ってガチャを回し、様々な種類のレアなミントを集めましょう。</p>
+        </div>
+
+        <div class="tutorial-section">
+            <h3>🧪 3. ポーションを醸造しよう！</h3>
+            <p>「ベーシックミント」1つと、集めた任意のミント2つを合成して強力なポーションを作れます。<br>
+            <b>レアなミントを使うほど、強力なポーションができやすくなります。</b></p>
+        </div>
+
+        <div class="tutorial-section">
+            <h3>💥 4. 惑星の『破壊』と再構築</h3>
+            <p>特定のミントを組み合わせた時のみできる「異質なポーション」。<br>
+            これを使用中のみ、すべてをリセットする<b>「破壊」</b>が可能になります。<br>
+            破壊すると、所持ミント数に応じて<b>「異星のミント（永続的な利益増加バフ）」</b>を得て更に所持金を増やすことができます！</p>
+        </div>
+
+        <button class="menu-btn" style="width:100%; justify-content:center; margin-top:20px;" onclick="closeTutorial()">ゲームを始める！</button>
+    </div>
+</div>
 
 <div id="achievementScreen" class="modal-screen">
     <div class="modal-content">
@@ -411,11 +459,10 @@ if(data){
     if(data.gachaCount === undefined) data.gachaCount = 0;
     if(!data.potions) data.potions = {};
     if(!data.activeBuffs) data.activeBuffs = {};
-    
-    // 新機能用の変数初期化
     if(data.brewCount === undefined) data.brewCount = 0;
     if(data.alienPotionCount === undefined) data.alienPotionCount = 0;
     if(data.alienMints === undefined) data.alienMints = 0;
+    if(data.tutorialSeen === undefined) data.tutorialSeen = false;
     
     // 互換性パッチ
     if(data.mintInventory["宇宙ミント"]){
@@ -437,7 +484,7 @@ if(data){
         nickname:"", money:10000, points:0, mint:0,
         mintInventory:{}, potions:{}, activeBuffs:{}, stocks:[],
         lastUpdate:Date.now(), totalBuys:0, gachaCount:0, achievementsUnlocked:[],
-        brewCount:0, alienPotionCount:0, alienMints:0
+        brewCount:0, alienPotionCount:0, alienMints:0, tutorialSeen: false
     };
 
     for(let i=0;i<10;i++){
@@ -468,9 +515,19 @@ function startGame(){
     document.getElementById("game").style.display="block";
     document.getElementById("playerName").innerText=data.nickname;
 
+    if(!data.tutorialSeen){
+        openScreen("tutorialScreen");
+    }
+
     checkAchievements();
     updateUI();
     startTimers();
+}
+
+function closeTutorial(){
+    data.tutorialSeen = true;
+    save();
+    closeScreen("tutorialScreen");
 }
 
 function startTimers(){
@@ -494,7 +551,6 @@ function updateUI(){
         let profitDisplay = "";
         if(stock.owned > 0 && stock.buyPrice > 0){
             let diff = stock.price - stock.buyPrice;
-            // 異星のミントの恩恵をUIにも表示
             if(diff > 0 && data.alienMints > 0){
                 let bonus = Math.floor(diff * 0.02 * data.alienMints);
                 diff += bonus; 
@@ -583,7 +639,6 @@ function sellStock(i,amount){
     const diff = sellPrice - stock.buyPrice;
     let bonus = 0;
     
-    // 異星のミントの効果計算（売却益の増加）
     if(diff > 0 && data.alienMints > 0) {
         bonus = Math.floor(diff * 0.02 * data.alienMints);
     }
@@ -677,23 +732,20 @@ function openDestroy() {
         alert("今はまだ押しても反応しない...。\n異質なポーションの効果中のみ「破壊」が可能になるようだ。");
         return;
     }
-    if (confirm("【警告】\n本当に世界を破壊しますか？\n\n実績と異星のミント以外、すべて（所持金、株、アイテム、バフ）が初期化されます。\n※持っている全ミント（所持ポイント＋アイテム合計）10個につき、異星のミントを1つ獲得します。")) {
+    if (confirm("【警告】\n本当にこの惑星を破壊しますか？\n\n実績と異星のミント以外、すべて（所持金、株、アイテム、バフ）が初期化されます。\n※持っている全ミント（所持ポイント＋アイテム合計）10個につき、異星のミントを1つ獲得します。")) {
         doDestroy();
     }
 }
 
 function doDestroy() {
-    // ミント総数を計算
     let totalMints = data.mint;
     for(let m in data.mintInventory) {
         totalMints += data.mintInventory[m];
     }
     let gained = Math.max(1, Math.floor(totalMints / 10));
     
-    // 異星のミント付与
     data.alienMints += gained;
     
-    // データ初期化 (実績、永続カウンター、異星ミント以外)
     data.money = 10000;
     data.points = 0;
     data.mint = 0;
@@ -701,7 +753,6 @@ function doDestroy() {
     data.potions = {};
     data.activeBuffs = {};
     
-    // 株価のリセット
     data.stocks.forEach((stock, i) => {
         let initialPrice = Math.floor(stockTemplates[i].basePrice * (0.9 + Math.random() * 0.2));
         stock.price = initialPrice;
@@ -711,7 +762,7 @@ function doDestroy() {
         stock.buyPrice = 0;
     });
 
-    showNotification(`💥 世界が崩壊し、再構築されました...\n👽 異星のミントを ${gained} 個獲得しました！`);
+    showNotification(`💥 惑星が崩壊し、再構築されました...\n🌿 異星のミントを ${gained} 個獲得しました！`);
     updateUI();
     save();
 }
@@ -800,7 +851,6 @@ const achievements=[
     {name:"ミント収集家",desc:"100ミント到達",check:()=>data.mint>=100},
     {name:"ガチャ体験",desc:"ガチャを引く",check:()=>data.gachaCount>=1},
     {name:"ガチャジャンキー",desc:"ガチャを100回引く",check:()=>data.gachaCount>=100},
-    // 新規実績
     {name:"見習い錬金術師",desc:"ポーションを1回醸造",check:()=>data.brewCount>=1},
     {name:"熟練錬金術師",desc:"ポーションを25回醸造",check:()=>data.brewCount>=25},
     {name:"マスターアルケミスト",desc:"ポーションを50回醸造",check:()=>data.brewCount>=50},
@@ -837,6 +887,7 @@ function openAchievements(){
     });
 }
 
+// ユーザー設定の確率
 const mintTable = [
     {name:"ベーシックミント",rate:19}, {name:"ウォーターミント",rate:5}, {name:"チョコチップミント",rate:3},
     {name:"ブラッドミント",rate:1}, {name:"青ミント",rate:20}, {name:"赤ミント",rate:20},
@@ -912,9 +963,10 @@ function spinGacha(times){
     },80);
 }
 
+// ユーザー設定のスコア (構文エラー修正済み)
 const mintScores = {
     "青ミント": 2, "赤ミント": 2, "ベーシックミント": 2, "緑ミント": 2,
-    "ウォーターミント"6: , "紫ミント": 4, "金ミント": 7, "チョコチップミント": 10,
+    "ウォーターミント": 6, "紫ミント": 4, "金ミント": 7, "チョコチップミント": 10,
     "ギャラクシーミント": 15, "ブラッドミント": 30, "ブラックホールミント": 30
 };
 
@@ -960,7 +1012,6 @@ function doBrew(){
 
     let result = "";
 
-    // 🌟 特殊レシピ
     if ((m1 === "ブラッドミント" && m2 === "ギャラクシーミント") || (m1 === "ギャラクシーミント" && m2 === "ブラッドミント")) {
         result = "❓ 異質なポーション";
         data.alienPotionCount++;
@@ -1036,6 +1087,11 @@ window.addEventListener("load",()=>{
         document.getElementById("nicknameScreen").style.display="none";
         document.getElementById("game").style.display="block";
         document.getElementById("playerName").innerText=data.nickname;
+        
+        if(!data.tutorialSeen){
+            openScreen("tutorialScreen");
+        }
+
         updateUI();
         startTimers();
     }
