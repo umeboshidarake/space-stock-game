@@ -675,27 +675,35 @@ function updateUI() {
         let coldUI = (data.coldWaterTarget && data.coldWaterTarget.id === idx && data.coldWaterTarget.counts > 0) ? 
             `<span style="color:#67e8f9; font-size:12px; margin-left:5px;">[🧊保護中:残${data.coldWaterTarget.counts}回]</span>` : "";
 
-        card.innerHTML = `
+       card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                <h3 style="margin:0 0 5px 0; font-size:18px; color:${isGraphHidden ? '#555' : '#e9d5ff'};">
+                <h3 style="margin:0; color:${colors[idx%colors.length]}; font-size:18px;">
                     ${stock.name} ${coldUI}
                 </h3>
-                <div style="font-size:12px; color:#c084fc; border:1px solid #c084fc; padding:2px 5px; border-radius:4px;">
-                    ${stock.personality}
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <div style="font-size:12px; color:#c084fc; border:1px solid #c084fc; padding:2px 5px; border-radius:4px;">
+                        ${stock.personality || "未知"}
+                    </div>
+                    <button onclick="toggleGraph(${idx})" style="padding:2px 5px; font-size:12px; border:none; background:transparent; color:${isGraphHidden ? '#666' : '#a855f7'}; text-decoration:${isGraphHidden ? 'line-through' : 'none'}; cursor:pointer;">📈表示</button>
                 </div>
             </div>
-            <div style="font-size:24px; font-weight:bold; margin-bottom:5px; color:${isGraphHidden ? '#555' : 'white'};">
-                ${stock.price.toLocaleString()}G <span style="font-size:14px; color:${change >= 0 ? '#10b981' : '#ef4444'};">${changeText}</span>
+            <p style="font-size:12px; color:#aaa; margin:5px 0;">${stock.desc}</p>
+            <div style="font-size:24px; font-weight:bold; margin:10px 0;">
+                ${stock.price.toLocaleString()}G <span style="font-size:14px; color:${diffColor};">${diffText}</span>
             </div>
             ${forecastUI}
-            <div style="font-size:12px; color:#aaa; margin-bottom:10px;">所持: ${stock.owned}株 (平均取得単価: ${stock.buyPrice.toLocaleString()}G)</div>
-            <div style="display:flex; gap:5px; margin-bottom:10px;">
-                <button class="menu-btn" style="flex:1;" onclick="buyStock(${idx}, 1)">買う</button>
-                <button class="menu-btn" style="flex:1;" onclick="buyStock(${idx}, 'max')">最大買</button>
-            </div>
-            <div style="display:flex; gap:5px;">
-                <button class="menu-btn" style="flex:1; background:linear-gradient(45deg, #1e3a8a, #3b82f6);" onclick="sellStock(${idx}, 1)">売る</button>
-                <button class="menu-btn" style="flex:1; background:linear-gradient(45deg, #1e3a8a, #3b82f6);" onclick="sellStock(${idx}, 'all')">全売</button>
+            <div style="font-size:14px; color:#e9d5ff; margin-bottom:10px;">所持: ${stock.owned}株 (平均: ${stock.buyPrice}G)</div>
+            <div class="card-actions">
+                <div class="btn-group">
+                    <button onclick="buyStock(${idx}, 1)">買1</button>
+                    <button onclick="buyStock(${idx}, 10)">買10</button>
+                    <button onclick="buyStock(${idx}, 'max')">買Max</button>
+                </div>
+                <div class="btn-group">
+                    <button onclick="sellStock(${idx}, 1)">売1</button>
+                    <button onclick="sellStock(${idx}, 10)">売10</button>
+                    <button onclick="sellStock(${idx}, 'all')">全売</button>
+                </div>
             </div>
         `;
         container.appendChild(card);
