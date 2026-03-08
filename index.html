@@ -1242,13 +1242,14 @@ const shopItems = [
 // レシピを販売する「もと」のリスト（ダークマターのもとは除外）
 const recipeBases = ["🛠️ ポーションのもと", "🛠️ スイーツのもと", "🛠️ 炭酸のもと", "🛠️ お酒のもと"];
 
-function openShop() {
+  function openShop() {
     const list = document.getElementById("shopList");
     list.innerHTML = "";
     list.style.overflowY = "auto";
     list.style.maxHeight = "60vh"; 
     list.style.paddingRight = "10px";
 
+    // 🌱 ミント直売所
     list.innerHTML += `<h3 style="color:#c084fc; margin-top:0; border-bottom:1px solid #c084fc; padding-bottom:5px;">🌱 ミント直売所</h3>`;
     shopItems.forEach(item => {
         list.innerHTML += `
@@ -1264,7 +1265,7 @@ function openShop() {
         `;
     });
 
-    // ▼ 追加：1度でも侵略した証拠（実績）があるか、異星のミントを持っている場合に表示
+    // 🛸 異星の取引所
     let hasInvaded = data.achievementsUnlocked.includes("次元の超越者");
     if (hasInvaded || data.alienMints > 0) {
         list.innerHTML += `
@@ -1281,8 +1282,12 @@ function openShop() {
         `;
     }
 
+    // 📜 レシピ解放
     list.innerHTML += `<h3 style="color:#c084fc; margin-top:20px; border-bottom:1px solid #c084fc; padding-bottom:5px;">📜 レシピ解放 (各 100,000G)</h3>`;
-    recipeBases.forEach(base => {
+    const bases = [...new Set(treeRecipes.map(r => r.base))];
+    bases.forEach(base => {
+        if (base === "🛠️ ダークマターのもと" || base === "🛠️ ダークマターのモト") return;
+
         let unknownRecipes = treeRecipes.filter(r => 
             r.base === base && 
             !data.discoveredPotions.includes(r.result) && 
@@ -1304,10 +1309,10 @@ function openShop() {
         `;
     });
 
-    // ▼ 追加：禍々しい禁書（ダークマターのもと派生レシピの解放）
+    // 📖 禍々しい禁書
     if (data.alienPotionUsed) {
         let darkRecipes = treeRecipes.filter(r => 
-            r.base === "🛠️ ダークマターのもと" && 
+            (r.base === "🛠️ ダークマターのもと" || r.base === "🛠️ ダークマターのモト") && 
             !data.discoveredPotions.includes(r.result)
         );
         
@@ -1331,37 +1336,7 @@ function openShop() {
 
     openScreen("shopScreen");
 }
-
-    // ▼ レシピ解放の販売セクション
-    list.innerHTML += `<h3 style="color:#c084fc; margin-top:20px; border-bottom:1px solid #c084fc; padding-bottom:5px;">📜 レシピ解放 (各 100,000G)</h3>`;
-    recipeBases.forEach(base => {
-        // まだ発見していない（data.discoveredPotionsに含まれていない）レシピを抽出
-        let unknownRecipes = treeRecipes.filter(r => 
-            r.base === base && 
-            !data.discoveredPotions.includes(r.result) && 
-            r.result !== "🎲 基本ポーション(ランダム)"
-        );
-        
-        let btnDisabled = unknownRecipes.length === 0 ? "disabled" : "";
-        let btnText = unknownRecipes.length === 0 ? "完売" : "ランダム解放";
-
-        list.innerHTML += `
-            <div class="list-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <div>
-                    <div style="font-weight:bold; color:#e9d5ff;">${base} 派生</div>
-                    <div style="font-size:11px; color:#aaa;">未解放: 残り ${unknownRecipes.length} 種</div>
-                </div>
-                <button class="menu-btn" style="padding:5px 10px; font-size:12px; margin:0; ${unknownRecipes.length === 0 ? 'opacity:0.5; cursor:not-allowed;' : ''}" 
-                    ${btnDisabled} onclick="buyRecipe('${base}', 100000)">
-                    ${btnText}
-                </button>
-            </div>
-        `;
-    });
-
-    openScreen("shopScreen");
-}
-
+    
 function buyShopItem(name, price) {
     if (data.money < price) return showNotification("❌ お金が足りません！");
     
