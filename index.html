@@ -1350,7 +1350,7 @@ function buyShopItem(name, price) {
     }
     
     showNotification(`🛒 「${name}」を購入しました！`);
-    updateUI(); save(); openShop(); // 表示を更新
+    updateUI(); save(); openShop();
 }
 
 function buyRecipe(base, price) {
@@ -1372,10 +1372,9 @@ function buyRecipe(base, price) {
     
     showNotification(`📜 お金の力でレシピ解放！\n「${pick.result}」の作り方を理解した！`);
     checkAchievements();
-    updateUI(); save(); openShop(); // 表示を更新
+    updateUI(); save(); openShop();
 }
 
-// --- 異星のミントでダークマターを購入する ---
 function buyDarkMatter() {
     if (data.alienMints < 100) return showNotification("❌ 異星のミントが足りません！");
     
