@@ -276,7 +276,7 @@ const potionEffects = {
     "🛡 プロテクトジェル": { desc: "3分間、株価下落時の下落幅半減", type: "buff", duration: 180000 },
     "💎 ミントブースト": { desc: "3分間、売却時のミント破片獲得量2倍", type: "buff", duration: 180000 },
     "🚀 ギャラクシーブル": { desc: "3分間、株価が上がりやすくなる", type: "buff", duration: 180000 },
-    "⏳ タイムワープ薬": { desc: "即座に20回分の価格変動", type: "instant", action: (m=1) => { for(let i=0;i<20*m;i++) updatePrices(true); updateUI(); }},
+    "⏳ タイムワープポーション": { desc: "即座に20回分の価格変動", type: "instant", action: (m=1) => { for(let i=0;i<20*m;i++) updatePrices(true); updateUI(); }},
    // ▼ 既存の成金ポーションを削除（上書き）し、以下を追加します！
     "💎 マダムロシャス": { desc: "20秒以内に株を累計200個以上売却すると、ミントガチャを50回引ける", type: "buff", duration: 20000 },
     "🍸 カシスオレンジ": { desc: "5分間、ガチャから果物系のミントしか出なくなる", type: "buff", duration: 300000 },
@@ -350,7 +350,7 @@ const treeRecipes = [
     { base: "🛠️ ポーションのもと", m1: "ソルティミント", m2: "ソルティミント", result: "🧂 ソルトバリア" },
     { base: "🛠️ ポーションのもと", m1: "マダムミント", m2: "任意", result: "💧 マダム・ザ・ウォーター" },
     { base: "🛠️ ポーションのもと", m1: "ギャラクシーミント", m2: "ブラッドミント", result: "❓ 異質なポーション" },
-    { base: "🛠️ 炭酸のもと", m1: "焼け焦げたミント", m2: "任意", result: "⏳ タイムポーション" },
+    { base: "🛠️ 炭酸のもと", m1: "焼け焦げたミント", m2: "任意", result: "⏳ タイムワープポーション" },
     { base: "🛠️ 炭酸のもと", m1: "スパイシーミント", m2: "任意", result: "🌶️ スパイシーサワー" },
     { base: "🛠️ 炭酸のもと", m1: "フロストミント", m2: "任意", result: "❄️ フロストエナジー" },
     { base: "🛠️ 炭酸のもと", m1: "焼け焦げたミント", m2: "スイーツミント", result: "🥤 コーラ" },
@@ -537,34 +537,32 @@ function updateTimer() {
 // ▼ 変動率を計算する専用関数（性格システム追加版）
 function calculateChangePercent(stock, idx) {
     let vol = stock.vol;
-    if(isBuffActive("📈 ハイパードライブ薬")) vol *= 2;
+    // ▼ ハイパードライブ弱体化（2倍 → 1.5倍）
+    if(isBuffActive("📈 ハイパードライブ薬")) vol *= 1.3;
     if(isBuffActive("🍨 アイスクリームポーション")) vol *= 0.3;
 
-    // 銘柄ごとに性格を割り当て（セーブデータになければ自動付与）
+    // 銘柄ごとに性格を割り当て
     const pList = ["🛡️ 堅実", "🐎 暴れ馬", "💞 ツンデレ", "🔥 不屈", "💧 臆病"];
     stock.personality = stock.personality || pList[idx % pList.length];
 
     let changePercent = (Math.random() * vol * 2) - vol; 
 
-    // ▼ 追加：性格による特別な値動き
+    // ▼ 性格による特別な値動き
     if (stock.personality === "🛡️ 堅実") {
-        vol *= 0.5; // 変動幅を半減
-        changePercent = (Math.random() * vol * 2) - vol + 0.005; // 常に少しだけプラス補正
+        vol *= 0.5; 
+        changePercent = (Math.random() * vol * 2) - vol + 0.005; 
     } 
     else if (stock.personality === "🐎 暴れ馬") {
-        if (Math.random() < 0.1) changePercent *= 3; // 10%の確率で変動が3倍に！
+        if (Math.random() < 0.1) changePercent *= 3; 
     } 
     else if (stock.personality === "💞 ツンデレ") {
-        // 前回の変動を引き継ぎやすい（トレンドフォロー）
         if (stock.lastChange > 0) changePercent += vol * 0.4;
         else if (stock.lastChange < 0) changePercent -= vol * 0.4;
     } 
     else if (stock.personality === "🔥 不屈") {
-        // 初期価格より安いと反発しやすい
         if (stock.price < stock.basePrice) changePercent += vol * 0.5;
     } 
     else if (stock.personality === "💧 臆病") {
-        // 価格が初期値の2倍を超えると、30%の確率で急落する
         if (stock.price > stock.basePrice * 2 && Math.random() < 0.3) changePercent = -vol * 1.5;
     }
 
@@ -581,13 +579,14 @@ function calculateChangePercent(stock, idx) {
             vol *= 2.5; 
             changePercent = (Math.random() * vol * 2) - vol; 
         }
-        if(isBuffActive("🚀 ギャラクシーブル")) changePercent = (Math.random() * vol * 1.5); 
+        // ▼ ギャラクシーブル弱体化（1.5倍 → 1.2倍）
+        if(isBuffActive("🚀 ギャラクシーブル")) changePercent = (Math.random() * vol * 1.1); 
         if(isBuffActive("🌋 ヴォルカニック・ブル")) changePercent = (Math.random() * vol * 2.5); 
         if(changePercent < 0 && isBuffActive("🛡 プロテクトジェル")) changePercent *= 0.5;
         if(changePercent < 0 && isBuffActive("🧂 ソルトバリア")) changePercent = 0;
     }
 
-    // 🧊 コールドウォーターの保護
+    // 🧊 コールドウォーターの保護（ここです！）
     if (data.coldWaterTarget && data.coldWaterTarget.id === idx && data.coldWaterTarget.counts > 0) {
         if (changePercent < 0) changePercent = 0;
     }
@@ -1089,7 +1088,7 @@ function doBrew(){
     
     let isRandom = false;
     if(resultPotion === "🎲 基本ポーション(ランダム)") {
-        let pool = ["💰 黄金の雫", "⭐ 知識の霊薬", "📈 ハイパードライブ薬", "🛡 プロテクトジェル", "💎 ミントブースト", "🚀 ギャラクシーブル", "⏳ タイムワープ薬"];
+        let pool = ["💰 黄金の雫", "⭐ 知識の霊薬", "📈 ハイパードライブ薬", "🛡 プロテクトジェル", "💎 ミントブースト", "🚀 ギャラクシーブル", "⏳ タイムポーション"];
         resultPotion = pool[Math.floor(Math.random() * pool.length)];
         isRandom = true;
     }
@@ -1217,17 +1216,27 @@ function openDestroy(){
 }
 
 function doDestroy(){
-    data.alienMints = (data.alienMints || 0) + 1;
-    data.money = 30000; data.points = 0;
-    data.tempestCurse = false; data.nextTempestStrike = 0;
+    // ▼ 異星のミント獲得量（持っている破片の10分の1）
+    let gainedAlien = Math.floor(data.mint / 500);
+    if (gainedAlien < 1) gainedAlien = 1; // 最低1個はもらえるようにする
+    data.alienMints = (data.alienMints || 0) + gainedAlien;
+    
+    data.money = 30000; 
+    data.points = 0;
+    data.mint = 0; // ▼ ミントの破片をリセット！
+    
+    data.tempestCurse = false; 
+    data.nextTempestStrike = 0;
     data.midasCurse = false;
+    
     data.stocks.forEach((s, idx) => {
         s.owned = 0; s.buyPrice = 0; s.unlocked = idx < 3; s.visible = idx < 3; 
-        s.price = s.basePrice; s.history = [s.price];
+        s.price = stockTemplates[idx].basePrice; // 🌟ココがNaNバグの原因でした！修正済み！
+        s.history = [s.price];
     });
     delete data.activeBuffs["❓ 異質なポーション"];
-   // （doDestroy関数の下の方にあるこの行を書き換え）
-showNotification("🛸 惑星は無数のミントに飲み込まれ、新たな次元への侵略が始まった...『異星のミント』を獲得！");
+    
+    showNotification(`🛸 惑星は無数のミントに飲み込まれた...『異星のミント』を ${gainedAlien} 個獲得！`);
     updateUI(); save();
 }
 
