@@ -1073,8 +1073,9 @@ function showNotification(msg){
     setTimeout(() => { if(notif.parentNode) notif.parentNode.removeChild(notif); }, 3000);
 }
 
-function openTutorial(){ openScreen("tutorialScreen"); }
+function openTutorial(){ openScreen("tutorialScreen"); 
 
+window.onload = () => { if(data.nickname) startGame(); };
 // --- ショップシステム ---
 
 // ショップで販売するミントの定義
@@ -1175,8 +1176,6 @@ function buyRecipe(base, price) {
     checkAchievements();
     updateUI(); save(); openShop(); // 表示を更新
 }
-
-window.onload = () => { if(data.nickname) startGame(); };
 </script>
 </body>
 </html>
