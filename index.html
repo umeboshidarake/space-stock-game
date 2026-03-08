@@ -534,14 +534,42 @@ function updateTimer() {
 }
 
 // ▼ 変動率を計算する専用関数（予知に使うため分離）
+// ▼ 変動率を計算する専用関数（性格システム追加版）
 function calculateChangePercent(stock, idx) {
     let vol = stock.vol;
     if(isBuffActive("📈 ハイパードライブ薬")) vol *= 2;
     if(isBuffActive("🍨 アイスクリームポーション")) vol *= 0.3;
 
+    // 銘柄ごとに性格を割り当て（セーブデータになければ自動付与）
+    const pList = ["🛡️ 堅実", "🐎 暴れ馬", "💞 ツンデレ", "🔥 不屈", "💧 臆病"];
+    stock.personality = stock.personality || pList[idx % pList.length];
+
+    let changePercent = (Math.random() * vol * 2) - vol; 
+
+    // ▼ 追加：性格による特別な値動き
+    if (stock.personality === "🛡️ 堅実") {
+        vol *= 0.5; // 変動幅を半減
+        changePercent = (Math.random() * vol * 2) - vol + 0.005; // 常に少しだけプラス補正
+    } 
+    else if (stock.personality === "🐎 暴れ馬") {
+        if (Math.random() < 0.1) changePercent *= 3; // 10%の確率で変動が3倍に！
+    } 
+    else if (stock.personality === "💞 ツンデレ") {
+        // 前回の変動を引き継ぎやすい（トレンドフォロー）
+        if (stock.lastChange > 0) changePercent += vol * 0.4;
+        else if (stock.lastChange < 0) changePercent -= vol * 0.4;
+    } 
+    else if (stock.personality === "🔥 不屈") {
+        // 初期価格より安いと反発しやすい
+        if (stock.price < stock.basePrice) changePercent += vol * 0.5;
+    } 
+    else if (stock.personality === "💧 臆病") {
+        // 価格が初期値の2倍を超えると、30%の確率で急落する
+        if (stock.price > stock.basePrice * 2 && Math.random() < 0.3) changePercent = -vol * 1.5;
+    }
+
     let isTempest = isBuffActive("🌪️ テンペスト");
     let isTempestStrike = (!isTempest && data.tempestCurse && Date.now() >= data.nextTempestStrike);
-    let changePercent = (Math.random() * vol * 2) - vol; 
     
     if (isTempest || isTempestStrike) {
         let extremeVol = vol * (10 + Math.random() * 10);
@@ -559,14 +587,16 @@ function calculateChangePercent(stock, idx) {
         if(changePercent < 0 && isBuffActive("🧂 ソルトバリア")) changePercent = 0;
     }
 
-    // 🧊 コールドウォーターの保護（マイナスをゼロにする）
+    // 🧊 コールドウォーターの保護
     if (data.coldWaterTarget && data.coldWaterTarget.id === idx && data.coldWaterTarget.counts > 0) {
         if (changePercent < 0) changePercent = 0;
     }
     
+    // 次回のツンデレ判定のために今回の変動を記録
+    stock.lastChange = changePercent;
+    
     return changePercent;
 }
-
 // ▼ 実際の価格更新
 function updatePrices(skipIntervalUpdate = false) {
     let isTempest = isBuffActive("🌪️ テンペスト");
@@ -647,23 +677,25 @@ function updateUI() {
 
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                <h3 style="margin:0; color:${colors[idx%colors.length]}; font-size:18px;">${stock.name}</h3>
-                <button onclick="toggleGraph(${idx})" style="padding:2px 5px; font-size:12px; border:none; background:transparent; color:${isGraphHidden ? '#666' : '#a855f7'}; text-decoration:${isGraphHidden ? 'line-through' : 'none'}; cursor:pointer;">📈表示</button>
+                <h3 style="margin:0 0 5px 0; font-size:18px; color:${isGraphHidden ? '#555' : '#e9d5ff'};">
+                    ${stock.name} ${coldUI}
+                </h3>
+                <div style="font-size:12px; color:#c084fc; border:1px solid #c084fc; padding:2px 5px; border-radius:4px;">
+                    ${stock.personality}
+                </div>
             </div>
-            <p style="font-size:12px; color:#aaa; margin:5px 0;">${stock.desc}</p>
-            <div style="font-size:24px; font-weight:bold; margin:10px 0;">${stock.price.toLocaleString()}G <span style="font-size:14px; color:${diffColor};">${diffText}</span></div>
-            <div style="font-size:14px; color:#e9d5ff;">所持: ${stock.owned}株 (平均: ${stock.buyPrice}G)</div>
-            <div class="card-actions">
-                <div class="btn-group">
-                    <button onclick="buyStock(${idx}, 1)">買1</button>
-                    <button onclick="buyStock(${idx}, 10)">買10</button>
-                    <button onclick="buyStock(${idx}, 'max')">買Max</button>
-                </div>
-                <div class="btn-group">
-                    <button onclick="sellStock(${idx}, 1)">売1</button>
-                    <button onclick="sellStock(${idx}, 10)">売10</button>
-                    <button onclick="sellStock(${idx}, 'all')">全売</button>
-                </div>
+            <div style="font-size:24px; font-weight:bold; margin-bottom:5px; color:${isGraphHidden ? '#555' : 'white'};">
+                ${stock.price.toLocaleString()}G <span style="font-size:14px; color:${change >= 0 ? '#10b981' : '#ef4444'};">${changeText}</span>
+            </div>
+            ${forecastUI}
+            <div style="font-size:12px; color:#aaa; margin-bottom:10px;">所持: ${stock.owned}株 (平均取得単価: ${stock.buyPrice.toLocaleString()}G)</div>
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <button class="menu-btn" style="flex:1;" onclick="buyStock(${idx}, 1)">買う</button>
+                <button class="menu-btn" style="flex:1;" onclick="buyStock(${idx}, 'max')">最大買</button>
+            </div>
+            <div style="display:flex; gap:5px;">
+                <button class="menu-btn" style="flex:1; background:linear-gradient(45deg, #1e3a8a, #3b82f6);" onclick="sellStock(${idx}, 1)">売る</button>
+                <button class="menu-btn" style="flex:1; background:linear-gradient(45deg, #1e3a8a, #3b82f6);" onclick="sellStock(${idx}, 'all')">全売</button>
             </div>
         `;
         container.appendChild(card);
