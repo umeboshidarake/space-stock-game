@@ -174,7 +174,8 @@ select { background: black; color: white; border: 1px solid #a855f7; padding: 10
         <button class="modal-close menu-btn" onclick="closeScreen('bagScreen')">閉じる</button>
     </div>
 </div>
-<div id="shopScreen" class="screen-overlay" style="display:none;">
+    
+<div id="shopScreen" class="screen-overlay" style="display:none; z-index: 100;">
     <div class="screen-content" style="max-width:400px;">
         <h2 style="color:#eab308;">🛒 銀河ショップ</h2>
         <p style="font-size:12px; color:#aaa;">お金の力で時間を買おう。※返品不可</p>
@@ -182,7 +183,7 @@ select { background: black; color: white; border: 1px solid #a855f7; padding: 10
         <button class="menu-btn" onclick="closeScreen('shopScreen')">閉じる</button>
     </div>
 </div>
-
+    
 <div id="craftScreen" class="modal-screen">
     <div class="modal-content">
         <h2 style="margin-top:0; color:#ffd700; text-align:center;">🔨 素材合成 (ベース作り)</h2>
