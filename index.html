@@ -102,6 +102,7 @@ select { background: black; color: white; border: 1px solid #a855f7; padding: 10
     <button class="menu-btn" onclick="openCraft()">🔨 素材合成</button>
     <button class="menu-btn" onclick="openBrew()">🧪 醸造</button>
     <button class="menu-btn" onclick="openBag()">🎒 バッグ</button>
+    <button class="menu-btn" onclick="openShop()">🛒 ショップ</button>
     <button class="menu-btn destroy-btn" onclick="openDestroy()">💥 破壊</button>
 </div>
 
@@ -171,6 +172,14 @@ select { background: black; color: white; border: 1px solid #a855f7; padding: 10
         <h2 style="text-align:center; color:#ffd700;">🎒 バッグ (所持ポーション)</h2>
         <div id="bagList" style="max-height: 400px; overflow-y: auto;"></div>
         <button class="modal-close menu-btn" onclick="closeScreen('bagScreen')">閉じる</button>
+    </div>
+</div>
+<div id="shopScreen" class="screen-overlay" style="display:none;">
+    <div class="screen-content" style="max-width:400px;">
+        <h2 style="color:#eab308;">🛒 銀河ショップ</h2>
+        <p style="font-size:12px; color:#aaa;">お金の力で時間を買おう。※返品不可</p>
+        <div id="shopList" style="text-align:left; max-height:400px; overflow-y:auto; margin-bottom:15px; padding-right:5px;"></div>
+        <button class="menu-btn" onclick="closeScreen('shopScreen')">閉じる</button>
     </div>
 </div>
 
@@ -1065,6 +1074,107 @@ function showNotification(msg){
 }
 
 function openTutorial(){ openScreen("tutorialScreen"); }
+
+// --- ショップシステム ---
+
+// ショップで販売するミントの定義
+const shopItems = [
+    { name: "ベーシックミント", price: 10000, desc: "すべての基本となるミント" },
+    { name: "スイーツミント", price: 200000, desc: "「スイーツのもと」の合成に必要" },
+    { name: "ガスミント", price: 200000, desc: "「炭酸のもと」の合成に必要" },
+    { name: "アルコールミント", price: 200000, desc: "「お酒のもと」の合成に必要" }
+];
+
+// レシピを販売する「もと」のリスト（ダークマターのもとは除外）
+const recipeBases = ["🛠️ ポーションのもと", "🛠️ スイーツのもと", "🛠️ 炭酸のもと", "🛠️ お酒のもと"];
+
+function openShop() {
+    const list = document.getElementById("shopList");
+    list.innerHTML = "";
+
+    // ▼ 素材（ミント）の販売セクション
+    list.innerHTML += `<h3 style="color:#c084fc; margin-top:0; border-bottom:1px solid #c084fc; padding-bottom:5px;">🌱 ミント直売所</h3>`;
+    shopItems.forEach(item => {
+        list.innerHTML += `
+            <div class="list-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div>
+                    <div style="font-weight:bold; color:#e9d5ff;">${item.name}</div>
+                    <div style="font-size:11px; color:#aaa;">${item.desc}</div>
+                </div>
+                <button class="menu-btn" style="padding:5px 10px; font-size:12px; margin:0;" onclick="buyShopItem('${item.name}', ${item.price})">
+                    ${item.price.toLocaleString()}G
+                </button>
+            </div>
+        `;
+    });
+
+    // ▼ レシピ解放の販売セクション
+    list.innerHTML += `<h3 style="color:#c084fc; margin-top:20px; border-bottom:1px solid #c084fc; padding-bottom:5px;">📜 レシピ解放 (各 100,000G)</h3>`;
+    recipeBases.forEach(base => {
+        // まだ発見していない（data.discoveredPotionsに含まれていない）レシピを抽出
+        let unknownRecipes = treeRecipes.filter(r => 
+            r.base === base && 
+            !data.discoveredPotions.includes(r.result) && 
+            r.result !== "🎲 基本ポーション(ランダム)"
+        );
+        
+        let btnDisabled = unknownRecipes.length === 0 ? "disabled" : "";
+        let btnText = unknownRecipes.length === 0 ? "完売" : "ランダム解放";
+
+        list.innerHTML += `
+            <div class="list-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <div>
+                    <div style="font-weight:bold; color:#e9d5ff;">${base} 派生</div>
+                    <div style="font-size:11px; color:#aaa;">未解放: 残り ${unknownRecipes.length} 種</div>
+                </div>
+                <button class="menu-btn" style="padding:5px 10px; font-size:12px; margin:0; ${unknownRecipes.length === 0 ? 'opacity:0.5; cursor:not-allowed;' : ''}" 
+                    ${btnDisabled} onclick="buyRecipe('${base}', 100000)">
+                    ${btnText}
+                </button>
+            </div>
+        `;
+    });
+
+    openScreen("shopScreen");
+}
+
+function buyShopItem(name, price) {
+    if (data.money < price) return showNotification("❌ お金が足りません！");
+    
+    data.money -= price;
+    data.mintInventory[name] = (data.mintInventory[name] || 0) + 1;
+    
+    // 図鑑に登録
+    if (!data.discoveredMints.includes(name)) {
+        data.discoveredMints.push(name);
+        checkAchievements();
+    }
+    
+    showNotification(`🛒 「${name}」を購入しました！`);
+    updateUI(); save(); openShop(); // 表示を更新
+}
+
+function buyRecipe(base, price) {
+    if (data.money < price) return showNotification("❌ お金が足りません！");
+    
+    let unknownRecipes = treeRecipes.filter(r => 
+        r.base === base && 
+        !data.discoveredPotions.includes(r.result) && 
+        r.result !== "🎲 基本ポーション(ランダム)"
+    );
+    
+    if (unknownRecipes.length === 0) return showNotification("このもとのレシピはすべて解放済みです！");
+
+    data.money -= price;
+    
+    // 未解放の中からランダムに1つ選ぶ
+    let pick = unknownRecipes[Math.floor(Math.random() * unknownRecipes.length)];
+    data.discoveredPotions.push(pick.result);
+    
+    showNotification(`📜 お金の力でレシピ解放！\n「${pick.result}」の作り方を理解した！`);
+    checkAchievements();
+    updateUI(); save(); openShop(); // 表示を更新
+}
 
 window.onload = () => { if(data.nickname) startGame(); };
 </script>
