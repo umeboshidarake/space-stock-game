@@ -189,11 +189,13 @@ select { background: black; color: white; border: 1px solid #a855f7; padding: 10
 <div id="craftScreen" class="modal-screen">
     <div class="modal-content">
         <h2 style="margin-top:0; color:#ffd700; text-align:center;">🔨 素材合成 (ベース作り)</h2>
-        <div id="craftRecipeHint" style="background:rgba(168,85,247,0.1); border:1px dashed #a855f7; padding:15px; border-radius:8px; margin-bottom:15px; font-size:14px; line-height:1.6;">
-            </div>
+        <div id="craftRecipeHint" style="background:rgba(168,85,247,0.1); border:1px dashed #a855f7; padding:15px; border-radius:8px; margin-bottom:15px; font-size:14px; line-height:1.6;"></div>
         <label>🟣 素材 1:</label><select id="craftMat1"></select>
         <label>🟣 素材 2:</label><select id="craftMat2"></select>
-        <button class="menu-btn" style="width:100%; margin-top:10px; font-size:18px;" onclick="doCraft()">合成する</button>
+        <div style="display:flex; gap:10px; margin-top:10px;">
+            <button class="menu-btn" style="flex:1; font-size:16px;" onclick="doCraft(false)">1個合成する</button>
+            <button class="menu-btn" style="flex:1; font-size:16px; background:linear-gradient(45deg, #b91c1c, #7f1d1d);" onclick="doCraft(true)">最大合成する</button>
+        </div>
         <button class="modal-close menu-btn" onclick="closeScreen('craftScreen')">閉じる</button>
     </div>
 </div>
@@ -276,9 +278,21 @@ const potionEffects = {
     "🚀 ギャラクシーブル": { desc: "3分間、株価が上がりやすくなる", type: "buff", duration: 180000 },
     "⏳ タイムワープ薬": { desc: "即座に20回分の価格変動", type: "instant", action: (m=1) => { for(let i=0;i<20*m;i++) updatePrices(true); updateUI(); }},
     
-    "💧 癒しの水": { desc: "株価が少しだけ上がりやすくなる (3分)", type: "buff", duration: 180000 },
+
     "💰 成金ポーション": { desc: "即座に 5,000G 獲得！", type: "instant", action: (m=1) => { data.money += 5000*m; } },
-    "🌟 ひらめきの霊薬": { desc: "即座に 500P 獲得！", type: "instant", action: (m=1) => { data.points += 500*m; } },
+    // ▼ マダム・ザ・ウォーターの修正（ガチャ画面を開くように変更）
+    "💧 マダム・ザ・ウォーター": { desc: "即座にミントガチャを10回引く", type: "instant", action: (m=1) => { closeScreen("bagScreen"); openGacha(); spinGacha(10 * m, true); }},
+    
+    // ▼ 旧「癒しの水」と「ひらめきの霊薬」をこれらに変更！
+    "🪐 ミンティアルプラネットポーション": { desc: "今持っているミントの破片が1.5倍に増殖する！", type: "instant", action: (m=1) => { 
+        let inc = Math.floor(data.mint * 0.5 * m);
+        data.mint += inc; 
+        showNotification(`🪐 宇宙の力で破片が ${inc} 個増殖した！`);
+    }},
+    "🧊 コールドウォーター": { desc: "1つの株式を選択し、5回の変動の間ほとんど下がらなくする", type: "instant", action: () => { 
+        closeScreen("bagScreen");
+        openColdWaterSelect(); // 専用の選択画面を開く
+    }},
     "🍦 チョコミントポーション": { desc: "次に飲むポーションの効果が2倍になる！", type: "buff", duration: 600000 }, 
     "⏳ タイムポーション": { desc: "次の株価変動がすぐに起こる！", type: "instant", action: () => { data.nextChange = Date.now(); } },
     "❓ 異質なポーション": { desc: "次元の境界を揺るがす...『破壊』が可能になり、禁忌の知識を得る", type: "buff", duration: 999999999 },
@@ -287,7 +301,6 @@ const potionEffects = {
     "🧂 ソルトバリア": { desc: "3分間、株価の下落を完全に無効化", type: "buff", duration: 180000 },
     "🌶️ スパイシーサワー": { desc: "1分間、変動間隔が10秒ごとに", type: "buff", duration: 60000 },
     "❄️ フロストエナジー": { desc: "2分間、次の価格変動を予知", type: "buff", duration: 120000 },
-    "💧 マダム・ザ・ウォーター": { desc: "即座にミントガチャを10回引く", type: "instant", action: (m=1) => { closeScreen("bagScreen"); spinGacha(10 * m, true); }},
     "🍨 アイスクリームポーション": { desc: "3分間、株価の変動がとても緩やかになる", type: "buff", duration: 180000 },
     "🍸 ソルティドッグ": { desc: "3分間、売却時の利益が1.5倍になる", type: "buff", duration: 180000 },
     "🥤 コーラ": { desc: "即座に10回分の価格変動を起こし、ミント破片を300得る", type: "instant", action: (m=1) => { for(let i=0;i<10*m;i++) updatePrices(true); data.mint += 300 * m; updateUI(); }},
@@ -325,8 +338,8 @@ const potionEffects = {
 
 // 醸造（ポーション作り）のレシピ
 const treeRecipes = [
-    { base: "🛠️ ポーションのもと", m1: "プラネットミント", m2: "任意", result: "💧 癒しの水" },
-    { base: "🛠️ ポーションのもと", m1: "フロストミント", m2: "任意", result: "🌟 ひらめきの霊薬" },
+    { base: "🛠️ ポーションのもと", m1: "プラネットミント", m2: "任意", result: "🪐 ミンティアルプラネットポーション" },
+    { base: "🛠️ ポーションのもと", m1: "フロストミント", m2: "ウォーターミント", result: "🧊 コールドウォーター" },
     { base: "🛠️ ポーションのもと", m1: "プラネットミント", m2: "プラネットミント", result: "🌍 星の恵み" },
     { base: "🛠️ ポーションのもと", m1: "マグマミント", m2: "マグマミント", result: "🌋 ヴォルカニック・ブル" },
     { base: "🛠️ ポーションのもと", m1: "ソルティミント", m2: "ソルティミント", result: "🧂 ソルトバリア" },
@@ -513,52 +526,72 @@ function updateTimer() {
     document.getElementById("buffStatus").innerHTML = buffText.length > 0 ? "✨ 発動中: " + buffText.join(" / ") : "";
 }
 
-function updatePrices(skipIntervalUpdate = false) {
-    let isHealing = isBuffActive("💧 癒しの水");
-    let isTempest = isBuffActive("🌪️ テンペスト");
-    let isTempestStrike = false;
+// ▼ 変動率を計算する専用関数（予知に使うため分離）
+function calculateChangePercent(stock, idx) {
+    let vol = stock.vol;
+    if(isBuffActive("📈 ハイパードライブ薬")) vol *= 2;
+    if(isBuffActive("🍨 アイスクリームポーション")) vol *= 0.3;
 
+    let isTempest = isBuffActive("🌪️ テンペスト");
+    let isTempestStrike = (!isTempest && data.tempestCurse && Date.now() >= data.nextTempestStrike);
+    let changePercent = (Math.random() * vol * 2) - vol; 
+    
+    if (isTempest || isTempestStrike) {
+        let extremeVol = vol * (10 + Math.random() * 10);
+        changePercent = (Math.random() * extremeVol * 2) - extremeVol;
+        if (Math.random() < 0.2) changePercent *= 2; 
+    } else {
+        if(data.midasCurse) changePercent += 0.02; 
+        if(isBuffActive("🍷 ワイン")) {
+            vol *= 2.5; 
+            changePercent = (Math.random() * vol * 2) - vol; 
+        }
+        if(isBuffActive("🚀 ギャラクシーブル")) changePercent = (Math.random() * vol * 1.5); 
+        if(isBuffActive("🌋 ヴォルカニック・ブル")) changePercent = (Math.random() * vol * 2.5); 
+        if(changePercent < 0 && isBuffActive("🛡 プロテクトジェル")) changePercent *= 0.5;
+        if(changePercent < 0 && isBuffActive("🧂 ソルトバリア")) changePercent = 0;
+    }
+
+    // 🧊 コールドウォーターの保護（マイナスをゼロにする）
+    if (data.coldWaterTarget && data.coldWaterTarget.id === idx && data.coldWaterTarget.counts > 0) {
+        if (changePercent < 0) changePercent = 0;
+    }
+    
+    return changePercent;
+}
+
+// ▼ 実際の価格更新
+function updatePrices(skipIntervalUpdate = false) {
+    let isTempest = isBuffActive("🌪️ テンペスト");
     if (!isTempest && data.tempestCurse && Date.now() >= data.nextTempestStrike) {
-        isTempestStrike = true;
         data.nextTempestStrike = Date.now() + 600000;
         showNotification("🌪️ テンペストの後遺症が発作を起こした！相場が荒れ狂っている！");
     }
     
     data.stocks.forEach((stock, idx) => {
         if(!stock.unlocked) return;
-        let vol = stock.vol;
-        if(isBuffActive("📈 ハイパードライブ薬")) vol *= 2;
-        if(isBuffActive("🍨 アイスクリームポーション")) vol *= 0.3;
-
-        let changePercent = (Math.random() * vol * 2) - vol; 
         
-        if (isTempest || isTempestStrike) {
-            let extremeVol = vol * (10 + Math.random() * 10);
-            changePercent = (Math.random() * extremeVol * 2) - extremeVol;
-            if (Math.random() < 0.2) changePercent *= 2; 
-        } else {
-            if(isHealing) changePercent += 0.01; 
-            if(data.midasCurse) changePercent += 0.02; // 常に少し上がりやすくなる
-            if(isBuffActive("🍷 ワイン")) {
-                vol *= 2.5; // 変動幅（ボラティリティ）を激しくする
-                changePercent = (Math.random() * vol * 2) - vol; // 乱高下させる
-            }
-            if(isBuffActive("🚀 ギャラクシーブル")) changePercent = (Math.random() * vol * 1.5); 
-            if(isBuffActive("🌋 ヴォルカニック・ブル")) changePercent = (Math.random() * vol * 2.5); 
-            if(changePercent < 0 && isBuffActive("🛡 プロテクトジェル")) changePercent *= 0.5;
-            if(changePercent < 0 && isBuffActive("🧂 ソルトバリア")) changePercent = 0;
-        }
-
+        // 予知済みの値があればそれを使用し、無ければ計算
+        let changePercent = stock.nextChangePercent !== undefined ? stock.nextChangePercent : calculateChangePercent(stock, idx);
+        
         stock.price = Math.max(10, Math.floor(stock.price * (1 + changePercent)));
         stock.history.push(stock.price);
         if(stock.history.length > 30) stock.history.shift();
+        
+        // ❄️ 次回の変動を裏で計算（予知）して保存しておく
+        stock.nextChangePercent = calculateChangePercent(stock, idx);
     });
+    
+    // 🧊 コールドウォーターのカウント減少
+    if (data.coldWaterTarget && data.coldWaterTarget.counts > 0) {
+        data.coldWaterTarget.counts--;
+        if (data.coldWaterTarget.counts === 0) showNotification("🧊 コールドウォーターの保護効果が切れました。");
+    }
     
     data.points += 100;
     if(!skipIntervalUpdate) data.nextChange = Date.now() + getTickInterval();
     updateUI(); drawAllGraph(); save();
 }
-
 // --- UI更新・株取引 ---
 function updateUI() {
     document.getElementById("money").innerText = data.money.toLocaleString();
@@ -592,6 +625,18 @@ function updateUI() {
         const diffText = diff === 0 ? "±0" : `${diffArrow}${Math.abs(diff)}`;
         
         const isGraphHidden = data.hiddenGraphItems.includes(idx);
+        // ❄️ 予知システムの表示
+        let forecastUI = "";
+        if (isBuffActive("❄️ フロストエナジー") && stock.nextChangePercent !== undefined) {
+            let forecastDiff = Math.floor(stock.price * stock.nextChangePercent);
+            let fColor = forecastDiff >= 0 ? "#10b981" : "#ef4444";
+            let fArrow = forecastDiff >= 0 ? "⬆️上昇" : "⬇️下落";
+            forecastUI = `<div style="font-size:12px; color:${fColor}; font-weight:bold; margin-top:5px; animation: unlockGlow 1s infinite alternate;">❄️ 予知: 次回${fArrow}</div>`;
+        }
+
+        // 🧊 コールドウォーター保護表示
+        let coldUI = (data.coldWaterTarget && data.coldWaterTarget.id === idx && data.coldWaterTarget.counts > 0) ? 
+            `<span style="color:#67e8f9; font-size:12px; margin-left:5px;">[🧊保護中:残${data.coldWaterTarget.counts}回]</span>` : "";
 
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -892,7 +937,8 @@ function openCraft() {
     openScreen("craftScreen");
 }
 
-function doCraft() {
+// --- 合成（一括対応） ---
+function doCraft(isMax = false) {
     let m1 = document.getElementById("craftMat1").value;
     let m2 = document.getElementById("craftMat2").value;
     if(!m1 || !m2) return showNotification("素材が選択されていません。");
@@ -905,15 +951,22 @@ function doCraft() {
     let recipe = craftRecipes.find(r => (r.m1 === m1 && r.m2 === m2) || (r.m1 === m2 && r.m2 === m1));
 
     if(recipe) {
-        // ▼ 異質なポーションを使用していないと作れない制限
         if (recipe.requiresAlienUsed && !data.alienPotionUsed) {
             return showNotification("❌ まだこのレシピを理解できる次元に達していない...");
         }
         
-        data.mintInventory[m1]--; data.mintInventory[m2]--;
-        data.mintInventory[recipe.result] = (data.mintInventory[recipe.result] || 0) + 1;
+        let craftCount = 1;
+        if (isMax) {
+            if (m1 === m2) craftCount = Math.floor(count1 / 2);
+            else craftCount = Math.min(count1, count2);
+        }
+        
+        data.mintInventory[m1] -= craftCount;
+        data.mintInventory[m2] -= craftCount; // m1とm2が同じ場合は計2個引かれる計算になります
+        
+        data.mintInventory[recipe.result] = (data.mintInventory[recipe.result] || 0) + craftCount;
         if(!data.discoveredMints.includes(recipe.result)) data.discoveredMints.push(recipe.result);
-        showNotification(`✨ 合成成功！「${recipe.result}」を作成しました！`);
+        showNotification(`✨ 合成成功！「${recipe.result}」を ${craftCount} 個作成しました！`);
     } else {
         showNotification("❌ レシピが存在しません！(素材は消費されませんでした)");
     }
@@ -1231,6 +1284,34 @@ function buyRecipe(base, price) {
     showNotification(`📜 お金の力でレシピ解放！\n「${pick.result}」の作り方を理解した！`);
     checkAchievements();
     updateUI(); save(); openShop(); // 表示を更新
+}
+// --- コールドウォーター選択画面 ---
+function openColdWaterSelect() {
+    let html = `<div class="modal-content" style="text-align:center;">
+        <h2 style="color:#67e8f9; margin-top:0;">🧊 保護する銘柄を選択</h2>
+        <p style="font-size:13px; color:#aaa;">選択した銘柄は、次の5回の変動で下落しなくなります。</p>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">`;
+    data.stocks.forEach((stock, idx) => {
+        if(stock.visible) {
+            html += `<button class="menu-btn" onclick="applyColdWater(${idx})">${stock.name}</button>`;
+        }
+    });
+    html += `</div><button class="modal-close menu-btn" onclick="closeScreen('coldWaterScreen'); openBag();">キャンセル</button></div>`;
+    
+    let modal = document.getElementById("coldWaterScreen");
+    if(!modal) {
+        modal = document.createElement("div"); modal.id = "coldWaterScreen"; modal.className = "modal-screen";
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = html;
+    openScreen("coldWaterScreen");
+}
+
+function applyColdWater(idx) {
+    data.coldWaterTarget = { id: idx, counts: 5 };
+    showNotification(`🧊 「${data.stocks[idx].name}」をコールドウォーターで保護しました！（残り5回）`);
+    closeScreen("coldWaterScreen");
+    updateUI(); save();
 }
 </script>
 </body>
