@@ -277,9 +277,14 @@ const potionEffects = {
     "💎 ミントブースト": { desc: "3分間、売却時のミント破片獲得量2倍", type: "buff", duration: 180000 },
     "🚀 ギャラクシーブル": { desc: "3分間、株価が上がりやすくなる", type: "buff", duration: 180000 },
     "⏳ タイムワープ薬": { desc: "即座に20回分の価格変動", type: "instant", action: (m=1) => { for(let i=0;i<20*m;i++) updatePrices(true); updateUI(); }},
-    
-
-    "💰 成金ポーション": { desc: "即座に 5,000G 獲得！", type: "instant", action: (m=1) => { data.money += 5000*m; } },
+   // ▼ 既存の成金ポーションを削除（上書き）し、以下を追加します！
+    "💎 マダムロシャス": { desc: "20秒以内に株を累計200個以上売却すると、ミントガチャを50回引ける", type: "buff", duration: 20000 },
+    "🍸 カシスオレンジ": { desc: "5分間、ガチャから果物系のミントしか出なくなる", type: "buff", duration: 300000 },
+    "🍋 レモンサワー": { desc: "現在のポイントの1/50の分だけミントの破片を生成する", type: "instant", action: (m=1) => { 
+        let gain = Math.floor((data.points / 50) * m);
+        data.mint += gain;
+        showNotification(`🍋 レモンの酸味でポイントが変換され、破片を ${gain} 個獲得した！`);
+    }},
     // ▼ マダム・ザ・ウォーターの修正（ガチャ画面を開くように変更）
     "💧 マダム・ザ・ウォーター": { desc: "即座にミントガチャを10回引く", type: "instant", action: (m=1) => { closeScreen("bagScreen"); openGacha(); spinGacha(10 * m, true); }},
     
@@ -350,7 +355,9 @@ const treeRecipes = [
     { base: "🛠️ 炭酸のもと", m1: "フロストミント", m2: "任意", result: "❄️ フロストエナジー" },
     { base: "🛠️ 炭酸のもと", m1: "焼け焦げたミント", m2: "スイーツミント", result: "🥤 コーラ" },
     { base: "🛠️ 炭酸のもと", m1: "ギャラクシーミント", m2: "スパイシーミント", result: "🌌 ギャラクシーサワー" }, // 追加
-    { base: "🛠️ お酒のもと", m1: "マダムミント", m2: "任意", result: "💰 成金ポーション" },
+    { base: "🛠️ お酒のもと", m1: "マダムミント", m2: "任意", result: "💎 マダムロシャス" },
+    { base: "🛠️ お酒のもと", m1: "🍊 オレンジミント", m2: "ウォーターミント", result: "🍸 カシスオレンジ" },
+    { base: "🛠️ お酒のもと", m1: "🍋 レモンミント", m2: "グリーンミント", result: "🍋 レモンサワー" },
     { base: "🛠️ お酒のもと", m1: "ソルティミント", m2: "ウォーターミント", result: "🍸 ソルティドッグ" },
     { base: "🛠️ スイーツのもと", m1: "チョコチップミント", m2: "任意", result: "🍦 チョコミントポーション" },
     { base: "🛠️ スイーツのもと", m1: "ミルクミント", m2: "ミルクミント", result: "🍨 アイスクリームポーション" },
@@ -719,6 +726,16 @@ function sellStock(idx, amount) {
         data.mint += mintGained;
         showNotification(`📈 利益確定！ ${profit.toLocaleString()}Gの利益！ (破片+${mintGained})`);
     }
+    if (isBuffActive("💎 マダムロシャス")) {
+        data.madameRochasCount = (data.madameRochasCount || 0) + qty;
+        if (data.madameRochasCount >= 200) {
+            delete data.activeBuffs["💎 マダムロシャス"]; // 達成したらバフ終了
+            showNotification("💎 マダムロシャスの条件達成！怒涛のガチャ50連が始まります！");
+            spinGacha(50, true);
+        } else {
+            showNotification(`💎 マダムロシャス進行中: ${data.madameRochasCount} / 200 個売却`);
+        }
+    }
     updateUI(); save();
 }
 
@@ -795,6 +812,13 @@ function drawAllGraph(){
 // --- ミント・ガチャシステム ---
 // --- ミント・ガチャシステム ---
 function getActiveMintTable() {
+    if (isBuffActive("🍸 カシスオレンジ")) {
+        return [
+            {name:"🍊 オレンジミント",rate:33.3}, 
+            {name:"🍇 グレープミント",rate:33.3}, 
+            {name:"🍋 レモンミント",rate:33.4}
+        ];
+    }
     let table = data.alienMints > 0 ? [
         {name:"ベーシックミント",rate:19}, {name:"ウォーターミント",rate:4}, {name:"チョコチップミント",rate:3},
         {name:"ブラッドミント",rate:1}, {name:"ブルーミント",rate:15}, {name:"レッドミント",rate:15},
@@ -1009,6 +1033,11 @@ function doBrew(){
     }
     
     if(!resultPotion) return showNotification("❌ 醸造レシピが間違っています！(素材は消費されませんでした)");
+
+    if (resultPotion === "❓ 異質なポーション") {
+        let allUnlocked = data.stocks.every(s => s.unlocked);
+        if (!allUnlocked) return showNotification("❌ まだこのレシピを理解できるほど、市場を把握していないようだ...（全銘柄の解放が必要）");
+    }
     
     let isRandom = false;
     if(resultPotion === "🎲 基本ポーション(ランダム)") {
@@ -1040,8 +1069,11 @@ function openRecipeTree(){
         treeRecipes.filter(r => r.base === base).forEach(r => {
             let li = document.createElement("li"); li.className = "tree-li";
             
-            if(r.result === "🎲 基本ポーション(ランダム)") {
-                li.innerHTML = `<span class="tree-recipe">🎲 ランダムな基本ポーション</span> <span style="font-size:12px;color:#aaa;">(任意 + 任意)</span>`;
+            let allUnlocked = data.stocks.every(s => s.unlocked);
+            if (r.result === "❓ 異質なポーション" && !allUnlocked) {
+                // 全銘柄解放されていない場合は条件を匂わせるだけ
+                li.innerHTML = `<span class="tree-unknown">？？？？？？？？</span> <span style="font-size:12px;color:#aaa;">(全銘柄の解放が必要...)</span>`;
+            } else if(r.result === "🎲 基本ポーション(ランダム)") {
             } else if(data.discoveredPotions.includes(r.result)) {
                 let dispM1 = r.m1; let dispM2 = r.m2;
                 li.innerHTML = `<span class="tree-recipe">${r.result}</span> <span style="font-size:12px;color:#aaa;">(${dispM1} + ${dispM2})</span>`;
@@ -1096,6 +1128,11 @@ function usePotion(p){
     if(effect){
         let mult = isBuffActive("🍦 チョコミントポーション") ? 2 : 1;
         if(p === "🍦 チョコミントポーション") mult = 1;
+
+        if (p === "💎 マダムロシャス") {
+            data.madameRochasCount = 0;
+            showNotification("⏱️ マダムの試練開始！20秒以内に株を200個売却せよ！");
+        }
         
         if (p === "🌪️ テンペスト") {
             data.tempestCurse = true;
