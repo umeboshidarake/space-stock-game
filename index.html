@@ -776,6 +776,10 @@ function sellStock(idx, amount) {
         showNotification(`📈 利益確定！ ${profit.toLocaleString()}Gの利益！ (破片+${mintGained})`);
     }
 
+    updateUI();
+    save();
+}
+
 function unlockStock(idx) {
     if (data.points >= data.stocks[idx].unlockCost) {
         data.points -= data.stocks[idx].unlockCost;
