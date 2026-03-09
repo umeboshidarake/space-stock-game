@@ -278,7 +278,7 @@ const potionEffects = {
     "🚀 ギャラクシーブル": { desc: "3分間、株価が上がりやすくなる", type: "buff", duration: 180000 },
     "⏳ タイムワープポーション": { desc: "即座に20回分の価格変動", type: "instant", action: (m=1) => { for(let i=0;i<20*m;i++) updatePrices(true); updateUI(); }},
    // ▼ 既存の成金ポーションを削除（上書き）し、以下を追加します！
-    "💎 マダムロシャス": { desc: "20秒以内に株を累計200個以上売却すると、ミントガチャを50回引ける", type: "buff", duration: 20000 },
+   "💎 マダムロシャス": { desc: "25%の確率でミントガチャを30回引ける。ハズレると何も起こらない。", type: "instant" },
     "🍸 カシスオレンジ": { desc: "5分間、ガチャから果物系のミントしか出なくなる", type: "buff", duration: 300000 },
     "🍋 レモンサワー": { desc: "現在のポイントの1/50の分だけミントの破片を生成する", type: "instant", action: (m=1) => { 
         let gain = Math.floor((data.points / 50) * m);
@@ -300,7 +300,7 @@ const potionEffects = {
     }},
     "🍦 チョコミントポーション": { desc: "次に飲むポーションの効果が2倍になる！", type: "buff", duration: 600000 }, 
     "⏳ タイムポーション": { desc: "次の株価変動がすぐに起こる！", type: "instant", action: () => { data.nextChange = Date.now(); } },
-    "❓ 異質なポーション": { desc: "次元の境界を揺るがす...『破壊』が可能になり、禁忌の知識を得る", type: "buff", duration: 999999999 },
+    "❓ 異質なポーション": { desc: "次元の境界を揺るがす...この周回中、いつでも『侵略』が可能になり、禁忌の知識を得る", type: "instant", action: () => {} },
     "🌍 星の恵み": { desc: "3分間、ミントの破片獲得量が3倍", type: "buff", duration: 180000 },
     "🌋 ヴォルカニック・ブル": { desc: "3分間、株価が超絶上がりやすくなる", type: "buff", duration: 180000 },
     "🧂 ソルトバリア": { desc: "3分間、株価の下落を完全に無効化", type: "buff", duration: 180000 },
@@ -470,8 +470,17 @@ const achievements = [
     { name: "次元の旅人", desc: "世界を20回破壊する", check: () => data.alienMints >= 20 },
     { name: "パラレルワールド", desc: "世界を50回破壊する", check: () => data.alienMints >= 50 },
     { name: "破壊神", desc: "世界を100回破壊する", check: () => data.alienMints >= 100 },
-    { name: "ループの果て", desc: "世界を500回破壊する", check: () => data.alienMints >= 500 }
+    { name: "ループの果て", desc: "世界を500回破壊する", check: () => data.alienMints >= 500 },
+    // ▼ 七つの大罪（隠し実績）
+    { name: "👑 傲慢の罪", desc: "すべての市場を支配する（全10銘柄を同時に300株以上所持する）", hidden: true, rewardMint: "傲慢のミント", check: () => data.stocks.length >= 10 && data.stocks.every(s => s.owned >= 300) },
+    { name: "👁️ 嫉妬の罪", desc: "隣の芝は青く、異星の力は赤い（異星のミントをちょうど666個所持する）", hidden: true, rewardMint: "嫉妬のミント", check: () => data.alienMints === 666 },
+    { name: "🔥 憤怒の罪", desc: "嵐と共にすべてを無に帰す（テンペストの呪い中に侵略を行う）", hidden: true, rewardMint: "憤怒のミント", check: () => false }, // ※侵略時に直接判定
+    { name: "💤 怠惰の罪", desc: "労働を放棄し、次元を超える（この周回で株を累計500株未満しか買わずに侵略を行う）", hidden: true, rewardMint: "怠惰のミント", check: () => false }, // ※侵略時に直接判定
+    { name: "💰 強欲の罪", desc: "果てなき欲望の果てに（この周回でガチャを2000回以上回して侵略を行う）", hidden: true, rewardMint: "強欲のミント", check: () => false }, // ※侵略時に直接判定
+    { name: "🍖 暴食の罪", desc: "すべてを喰らい尽くす（この周回でミント直売所で10,000,000G以上消費して侵略を行う）", hidden: true, rewardMint: "暴食のミント", check: () => false }, // ※侵略時に直接判定
+    { name: "💋 色欲の罪", desc: "すべての価値が熱を帯びる（全10銘柄の株価が同時に1000G以上になる）", hidden: true, rewardMint: "色欲のミント", check: () => data.stocks.length >= 10 && data.stocks.every(s => s.price >= 1000) }
 ];
+
 
 // --- メインシステム ---
 function save() {
@@ -580,7 +589,7 @@ function calculateChangePercent(stock, idx) {
             changePercent = (Math.random() * vol * 2) - vol; 
         }
         // ▼ ギャラクシーブル弱体化（1.5倍 → 1.2倍）
-        if(isBuffActive("🚀 ギャラクシーブル")) changePercent = (Math.random() * vol * 1.1); 
+        if(isBuffActive("🚀 ギャラクシーブル")) changePercent = (Math.random() * vol * 1.025); 
         if(isBuffActive("🌋 ヴォルカニック・ブル")) changePercent = (Math.random() * vol * 2.5); 
         if(changePercent < 0 && isBuffActive("🛡 プロテクトジェル")) changePercent *= 0.5;
         if(changePercent < 0 && isBuffActive("🧂 ソルトバリア")) changePercent = 0;
@@ -638,7 +647,7 @@ function updateUI() {
     let alienBonusStr = data.alienMints > 0 ? `<span style="font-size:12px; color:#a855f7; margin-left:5px;">[利益/破片 +${data.alienMints}%]</span>` : "";
     document.getElementById("alienMints").innerHTML = data.alienMints + alienBonusStr;
     
-    document.querySelector(".destroy-btn").disabled = !isBuffActive("❓ 異質なポーション");
+   document.querySelector(".destroy-btn").disabled = !data.alienPotionUsed;
 
     const container = document.getElementById("stocks");
     container.innerHTML = "";
@@ -726,6 +735,7 @@ function buyStock(idx, amount) {
         stock.owned += qty;
         stock.buyPrice = Math.floor(totalCost / stock.owned);
         data.totalBuys++;
+        data.currentRunBought = (data.currentRunBought || 0) + qty;
         updateUI(); save();
     }
 }
@@ -765,18 +775,6 @@ function sellStock(idx, amount) {
         data.mint += mintGained;
         showNotification(`📈 利益確定！ ${profit.toLocaleString()}Gの利益！ (破片+${mintGained})`);
     }
-    if (isBuffActive("💎 マダムロシャス")) {
-        data.madameRochasCount = (data.madameRochasCount || 0) + qty;
-        if (data.madameRochasCount >= 200) {
-            delete data.activeBuffs["💎 マダムロシャス"]; // 達成したらバフ終了
-            showNotification("💎 マダムロシャスの条件達成！怒涛のガチャ50連が始まります！");
-            spinGacha(50, true);
-        } else {
-            showNotification(`💎 マダムロシャス進行中: ${data.madameRochasCount} / 200 個売却`);
-        }
-    }
-    updateUI(); save();
-}
 
 function unlockStock(idx) {
     if (data.points >= data.stocks[idx].unlockCost) {
@@ -908,6 +906,7 @@ function spinGacha(times, isFree = false){
     
     if(!isFree) data.mint -= 15 * times; 
     data.gachaCount += times; isGachaSpinning = true;
+    data.currentRunGacha = (data.currentRunGacha || 0) + times;
     document.getElementById("gachaBtn").disabled = true; document.getElementById("gacha10Btn").disabled = true;
     
     let results = [];
@@ -972,6 +971,11 @@ function spinGacha(times, isFree = false){
 // --- 合成 ---
 function openCraft() {
     const s1 = document.getElementById("craftMat1"); const s2 = document.getElementById("craftMat2");
+    
+    // ▼ 今選んでいるものを記憶する
+    let currentM1 = s1.value;
+    let currentM2 = s2.value;
+    
     s1.innerHTML = ""; s2.innerHTML = "";
     
     Object.keys(data.mintInventory).forEach(m => {
@@ -980,6 +984,12 @@ function openCraft() {
             s2.innerHTML += `<option value="${m}">${m} (所持: ${data.mintInventory[m]})</option>`;
         }
     });
+
+    // ▼ さっき選んでいたアイテムがまだ1個以上あるなら、選択状態を復元する
+    if(currentM1 && data.mintInventory[currentM1] > 0) s1.value = currentM1;
+    if(currentM2 && data.mintInventory[currentM2] > 0) s2.value = currentM2;
+
+    // ... (後半のヒント表示などはそのまま) ...
 
     let hintHTML = `
         <p style="margin-top:0; margin-bottom:5px; color:#c084fc; font-weight:bold;">【基本レシピ】</p>
@@ -997,8 +1007,7 @@ function openCraft() {
             <div style="margin-top:15px; padding:10px; background:rgba(100,0,0,0.3); border:1px solid #ef4444; border-radius:5px; box-shadow: inset 0 0 10px #7f1d1d;">
                 <p style="margin-top:0; margin-bottom:5px; color:#f87171; font-weight:bold; text-shadow: 0 0 5px #ef4444; font-family: 'Courier New', monospace; letter-spacing: 2px;">【 脳 内 に 響 く 禁 忌 の 記 憶 】</p>
                 <ul style="margin:0; padding-left:20px; color:#fca5a5; font-family: 'Courier New', monospace; font-size: 13px; line-height:1.6;">
-                    <li style="text-shadow: 0 0 3px red;">🌌ｷﾞｬﾗｸｼｰ + 🌑ﾀﾞｰｸﾏﾀｰ = <span style="color:#ef4444; font-weight:bold;">🛠️ ﾀﾞｰｸﾏﾀｰのﾓﾄ</span></li>
-                    <li style="text-shadow: 0 0 3px red;">🛠️ ﾀﾞｰｸﾏﾀｰのﾓﾄ + 🩸ﾌﾞﾗｯﾄﾞ + 🕳️ﾌﾞﾗｯｸﾎｰﾙ = <span style="color:#ef4444; font-weight:bold;">🌪️ ﾃﾝﾍﾟｽﾄ</span></li>
+                    <li style="text-shadow: 0 0 3px red;">🌌ｷﾞｬﾗｸｼｰ + 🌑ﾀﾞｰｸﾏﾀｰ = <span style="color:#ef4444; font-weight:bold;">🛠️ ﾀﾞｰｸﾏﾀｰのもと</span></li>
                 </ul>
             </div>
         `;
@@ -1182,8 +1191,40 @@ function usePotion(p){
         if(p === "🍦 チョコミントポーション") mult = 1;
 
         if (p === "💎 マダムロシャス") {
-            data.madameRochasCount = 0;
-            showNotification("⏱️ マダムの試練開始！20秒以内に株を200個売却せよ！");
+            if (Math.random() < 0.25) {
+                // 25%の確率で30連ガチャ発動
+                let table = getActiveMintTable();
+                let results = {};
+                
+                for(let i = 0; i < 30; i++) {
+                    let rand = Math.random() * 100;
+                    let sum = 0;
+                    let dropped = "ベーシックミント";
+                    
+                    for(let m of table) {
+                        sum += m.rate;
+                        if(rand <= sum) {
+                            dropped = m.name;
+                            break;
+                        }
+                    }
+                    results[dropped] = (results[dropped] || 0) + 1;
+                    data.mintInventory[dropped] = (data.mintInventory[dropped] || 0) + 1;
+                    
+                    if(!data.discoveredMints.includes(dropped)) {
+                        data.discoveredMints.push(dropped);
+                    }
+                }
+                
+                // 結果をまとめてテキスト化して通知
+                let resultText = Object.keys(results).map(k => `${k}×${results[k]}`).join("、");
+                showNotification(`🎉 【大当たり】マダムの気まぐれ30連ガチャ！\n獲得: ${resultText}`);
+                checkAchievements();
+                
+            } else {
+                // 75%でハズレ
+                showNotification(`💨 マダムはあなたに興味を示さなかった...（ハズレ）`);
+            }
         }
         
         if (p === "🌪️ テンペスト") {
@@ -1205,10 +1246,9 @@ function usePotion(p){
     } else { showNotification(`🧪 「${p}」を飲んだが、特に何も起きなかった...`); }
     updateUI(); save(); openBag();
 }
-
-function openDestroy(){
-    if(!isBuffActive("❓ 異質なポーション")) return showNotification("今はまだ、その時ではないようだ...");
     
+  function openDestroy(){
+    if(!data.alienPotionUsed) return showNotification("今はまだ、その時ではないようだ...");
     // ▼ テキストを「侵略」のストーリーに変更
     if(confirm("🛸 最終警告 🛸\n本当にこの惑星をミントで『侵略』し、全てを埋め尽くしますか？\n（※惑星が飲み込まれるため所持金・株・ポイントはリセットされ、上位次元の「異星のミント」を獲得します）")){
         doDestroy();
@@ -1216,41 +1256,82 @@ function openDestroy(){
 }
 
 function doDestroy(){
-    // ▼ 異星のミント獲得量（持っている破片の10分の1）
-    let gainedAlien = Math.floor(data.mint / 500);
-    if (gainedAlien < 1) gainedAlien = 1; // 最低1個はもらえるようにする
+    // --- 🩸 侵略時の大罪判定 ---
+    if (isBuffActive("🌪️ テンペスト") || data.tempestCurse) unlockSin("🔥 憤怒の罪");
+    if ((data.currentRunBought || 0) < 500) unlockSin("💤 怠惰の罪");
+    if ((data.currentRunGacha || 0) >= 2000) unlockSin("💰 強欲の罪");
+    if ((data.currentRunShopSpent || 0) >= 10000000) unlockSin("🍖 暴食の罪");
+
+    // --- 通常の侵略処理 ---
+    let gainedAlien = Math.floor(data.mint / 10);
+    if (gainedAlien < 1) gainedAlien = 1; 
     data.alienMints = (data.alienMints || 0) + gainedAlien;
     
     data.money = 30000; 
     data.points = 0;
-    data.mint = 0; // ▼ ミントの破片をリセット！
+    data.mint = 0; 
     
     data.tempestCurse = false; 
     data.nextTempestStrike = 0;
     data.midasCurse = false;
     
+    // ▼ 追加：大罪ミント以外のミント（アイテム）とポーションをすべて没収する
+    const sinMints = ["傲慢のミント", "嫉妬のミント", "憤怒のミント", "怠惰のミント", "強欲のミント", "暴食のミント", "色欲のミント", "ダークマター"];
+    
+    // ミントのリセット
+    for (let m in data.mintInventory) {
+        if (!sinMints.includes(m)) {
+            data.mintInventory[m] = 0;
+        }
+    }
+    // ついでに作っていたポーションも惑星と一緒に消滅させます
+    for (let p in data.potions) {
+        data.potions[p] = 0;
+    }
+    
+    // ▼ 周回記録をリセット
+    data.currentRunBought = 0;
+    data.currentRunGacha = 0;
+    data.currentRunShopSpent = 0;
+    data.alienPotionUsed = false;
+    data.alienPotionRecipeRevealed = false;
+    
     data.stocks.forEach((s, idx) => {
         s.owned = 0; s.buyPrice = 0; s.unlocked = idx < 3; s.visible = idx < 3; 
-        s.price = stockTemplates[idx].basePrice; // 🌟ココがNaNバグの原因でした！修正済み！
+        s.price = stockTemplates[idx].basePrice; 
         s.history = [s.price];
     });
-    delete data.activeBuffs["❓ 異質なポーション"];
+    
+    // 全てのバフを強制解除
+    data.activeBuffs = {};
     
     showNotification(`🛸 惑星は無数のミントに飲み込まれた...『異星のミント』を ${gainedAlien} 個獲得！`);
     updateUI(); save();
+    
+    checkAchievements(); // ▼ ここで「嫉妬の罪」をチェック
 }
-
+    
 function openAchievements(){
     const list = document.getElementById("achievementList"); list.innerHTML = "";
     achievements.forEach(a => {
         const isUnlocked = data.achievementsUnlocked.includes(a.name);
+        
+        // ▼ 隠し実績は未クリアなら表示しない
+        if (a.hidden && !isUnlocked) return;
+
         const item = document.createElement("div"); 
+        
+        // ▼ 大罪実績は禍々しいデザインにする
+        let extraStyle = a.hidden ? "background:rgba(50,0,0,0.5); border:1px solid #ef4444; box-shadow:inset 0 0 10px red;" : "";
+        let extraNameStyle = a.hidden ? "color:#fca5a5; text-shadow:0 0 5px red;" : (isUnlocked ? "color:#ffd700;" : "color:#888;");
+        
         item.className = "list-item" + (isUnlocked ? "" : " locked");
+        item.style.cssText = extraStyle;
         
         let dispName = isUnlocked ? a.name : "？？？？";
         let dispDesc = isUnlocked ? a.desc : "？？？？？？？？？？";
         
-        item.innerHTML = `<div><div style="font-weight:bold; color:${isUnlocked ? '#ffd700' : '#888'};">${dispName}</div><div style="font-size:12px; color:#aaa;">${dispDesc}</div></div>
+        item.innerHTML = `<div><div style="font-weight:bold; ${extraNameStyle}">${dispName}</div><div style="font-size:12px; color:#aaa;">${dispDesc}</div></div>
                           <div style="font-size:24px;">${isUnlocked ? '🌟' : '🔒'}</div>`;
         list.appendChild(item);
     });
@@ -1262,12 +1343,31 @@ function checkAchievements(){
         if(!data.achievementsUnlocked.includes(a.name) && a.check()){
             data.achievementsUnlocked.push(a.name);
             showNotification(`🏆 実績解除: ${a.name}`);
-            data.money += 10000; data.points += 500; data.mint += 50;
-            showNotification(`🎁 ボーナス獲得: 10,000G / 500P / 50破片`);
+            
+            // ▼ 大罪実績の場合は専用ミントを付与
+            if (a.rewardMint) {
+                data.mintInventory[a.rewardMint] = (data.mintInventory[a.rewardMint] || 0) + 1;
+                if(!data.discoveredMints.includes(a.rewardMint)) data.discoveredMints.push(a.rewardMint);
+                showNotification(`🩸 禍々しい力が形を成した...「${a.rewardMint}」を獲得！`);
+            } else {
+                data.money += 10000; data.points += 500;
+                showNotification(`🎁 ボーナス獲得: 10,000G / 500P`);
+            }
         }
     });
 }
 
+// ▼ 追加：侵略時などの特殊なタイミングで直接実績を解除する関数
+function unlockSin(sinName) {
+    let a = achievements.find(x => x.name === sinName);
+    if (a && !data.achievementsUnlocked.includes(a.name)) {
+        data.achievementsUnlocked.push(a.name);
+        showNotification(`🏆 【大罪実績】解除: ${a.name}`);
+        data.mintInventory[a.rewardMint] = (data.mintInventory[a.rewardMint] || 0) + 1;
+        if(!data.discoveredMints.includes(a.rewardMint)) data.discoveredMints.push(a.rewardMint);
+        showNotification(`🩸 禍々しい力が形を成した...「${a.rewardMint}」を獲得！`);
+    }
+}
 function showNotification(msg){
     const container = document.getElementById("notificationContainer");
     const notif = document.createElement("div"); notif.className = "notification"; notif.innerText = msg;
@@ -1390,6 +1490,7 @@ function buyShopItem(name, price) {
     if (data.money < price) return showNotification("❌ お金が足りません！");
     
     data.money -= price;
+    data.currentRunShopSpent = (data.currentRunShopSpent || 0) + price;
     data.mintInventory[name] = (data.mintInventory[name] || 0) + 1;
     
     // 図鑑に登録
