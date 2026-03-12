@@ -506,13 +506,13 @@ const achievements = [
     { name: "時の支配者", desc: "タイムワープ薬を作成する", check: () => data.discoveredPotions.includes("⏳ タイムワープ薬") },
 
     // ▼ 次元の超越（周回）系
-    { name: "次元の超越者", desc: "世界を破壊し、異星のミントを手に入れる", check: () => data.alienMints >= 1 },
-    { name: "ループする宇宙", desc: "世界を5回破壊する", check: () => data.alienMints >= 5 },
-    { name: "ループの達人", desc: "世界を10回破壊する", check: () => data.alienMints >= 10 },
-    { name: "次元の旅人", desc: "世界を20回破壊する", check: () => data.alienMints >= 20 },
-    { name: "パラレルワールド", desc: "世界を50回破壊する", check: () => data.alienMints >= 50 },
-    { name: "破壊神", desc: "世界を100回破壊する", check: () => data.alienMints >= 100 },
-    { name: "ループの果て", desc: "世界を500回破壊する", check: () => data.alienMints >= 500 },
+    { name: "次元の超越者", desc: "世界を破壊し、異星のミントを手に入れる", check: () => data.invasionCount >= 1 },
+    { name: "ループする宇宙", desc: "世界を5回破壊する", check: () =>data.invasionCount >= 5 },
+    { name: "ループの達人", desc: "世界を10回破壊する", check: () => data.invasionCount >= 10 },
+    { name: "次元の旅人", desc: "世界を20回破壊する", check: () => data.invasionCount >= 20 },
+    { name: "パラレルワールド", desc: "世界を50回破壊する", check: () => data.invasionCount >= 50 },
+    { name: "破壊神", desc: "世界を100回破壊する", check: () => data.invasionCount >= 100 },
+    { name: "ループの果て", desc: "世界を500回破壊する", check: () => data.invasionCount >= 500 },
     // ▼ 七つの大罪（隠し実績）
     { name: "👑 傲慢の罪", desc: "すべての市場を支配する（全10銘柄を同時に300株以上所持する）", hidden: true, rewardMint: "傲慢のミント", check: () => data.stocks.length >= 10 && data.stocks.every(s => s.owned >= 300) },
     { name: "👁️ 嫉妬の罪", desc: "隣の芝は青く、異星の力は赤い（異星のミントをちょうど666個所持する）", hidden: true, rewardMint: "嫉妬のミント", check: () => data.alienMints === 666 },
@@ -759,27 +759,28 @@ function updateUI() {
         container.appendChild(card);
     });
 }
-// ▼ 侵略の禍々しい演出を実行する関数 ▼
+// ▼ 侵略の禍々しい演出を実行する関数（文字復元付き！） ▼
 function playInvasionEffect(callback) {
-    // 1. 画面を歪ませるクラスを付与
     document.body.classList.add("invasion-active");
-
-    // 2. 暗転用のレイヤーを画面に追加
     const blackout = document.createElement("div");
     blackout.className = "invasion-blackout";
     document.body.appendChild(blackout);
 
-    // 3. 画面内のテキストをバグらせる処理
-    // （文字が含まれていそうな要素を適当に見つけて崩壊させます）
     const targetElements = document.querySelectorAll("h3, p, button, span, div");
     const glitchChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*!?;:<>~{}[]ΨΩΦ☠👁️";
     
+    // ★追加：バグらせる前の「元の文字」を保存しておく箱
+    const originalTexts = new Map();
+
     let glitchInterval = setInterval(() => {
         targetElements.forEach(el => {
-            // 子要素を持たない（純粋なテキストだけの）要素を確率でバグらせる
             if (el.children.length === 0 && el.innerText.trim() !== "" && Math.random() < 0.2) {
+                // 初回だけ元のテキストを保存
+                if (!originalTexts.has(el)) {
+                    originalTexts.set(el, el.innerText);
+                }
                 let glitchedText = "";
-                let len = el.innerText.length > 10 ? 10 : el.innerText.length; // 長すぎないように調整
+                let len = el.innerText.length > 10 ? 10 : el.innerText.length;
                 for(let i=0; i<len; i++) {
                     glitchedText += glitchChars[Math.floor(Math.random() * glitchChars.length)];
                 }
@@ -788,27 +789,28 @@ function playInvasionEffect(callback) {
         });
     }, 100);
 
-    // 4. 約2.5秒後に画面を真っ黒に染める
     setTimeout(() => {
         blackout.style.opacity = "1";
         blackout.innerText = "世界が崩壊しました……";
     }, 2500);
 
-    // 5. 約4秒後に演出を終了し、実際のリセット処理（callback）を実行する
     setTimeout(() => {
         clearInterval(glitchInterval);
         document.body.classList.remove("invasion-active");
         
-        // ここで実際の「侵略（データリセット＆異星ミント獲得）」の処理を動かす
+        // ★追加：保存しておいた元のテキストをすべて復元する！
+        originalTexts.forEach((text, el) => {
+            el.innerText = text;
+        });
+
         if (callback) callback(); 
 
-        // リセット後、暗転を少しずつ晴らす
         setTimeout(() => {
             blackout.style.opacity = "0";
             setTimeout(() => blackout.remove(), 1500);
         }, 1500);
 
-    }, 4000); // 合計4秒間の恐怖体験
+    }, 4000);
 }
     
 function toggleGraph(idx) {
@@ -1355,6 +1357,7 @@ function usePotion(p){
 
 function doDestroy(){
     playInvasionEffect(() => {
+    data.invasionCount = (data.invasionCount || 0) + 1;
     // --- 🩸 侵略時の大罪判定 ---
     if (isBuffActive("🌪️ テンペスト") || data.tempestCurse) unlockSin("🔥 憤怒の罪");
     if ((data.currentRunBought || 0) < 500) unlockSin("💤 怠惰の罪");
@@ -1450,8 +1453,8 @@ function checkAchievements(){
                 if(!data.discoveredMints.includes(a.rewardMint)) data.discoveredMints.push(a.rewardMint);
                 showNotification(`🩸 禍々しい力が形を成した...「${a.rewardMint}」を獲得！`);
             } else {
-                data.money += 10000; data.points += 500;
-                showNotification(`🎁 ボーナス獲得: 10,000G / 500P`);
+                data.money += 3000; data.points += 500;
+                showNotification(`🎁 ボーナス獲得: 3,000G / 500P`);
             }
         }
     });
