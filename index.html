@@ -78,6 +78,48 @@ select { background: black; color: white; border: 1px solid #a855f7; padding: 10
 .tree-base { font-size: 18px; font-weight: bold; color: #ffd700; margin-top: 20px; border-bottom: 1px solid #a855f7; padding-bottom: 5px; }
 .tree-recipe { color: #e9d5ff; font-size: 14px; font-weight: bold; }
 .tree-unknown { color: #888; font-style: italic; font-weight: bold; }
+/* ▼ 侵略演出用のCSS ▼ */
+
+/* 1. 画面全体が毒々しく反転し、激しく揺れるエフェクト */
+.invasion-active {
+    animation: invasionShake 0.4s infinite;
+    filter: invert(90%) hue-rotate(180deg) contrast(200%) brightness(80%);
+    transition: filter 3s ease-in; /* 3秒かけて徐々に歪む */
+    pointer-events: none; /* 演出中はクリック禁止 */
+}
+
+@keyframes invasionShake {
+    0% { transform: translate(2px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(0px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(2px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(2px, 2px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+/* 2. すべてを飲み込む漆黒の闇（暗転用） */
+.invasion-blackout {
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background-color: #000;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 1.5s ease-in;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: red;
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 0 0 10px darkred;
+    font-family: 'Courier New', monospace;
+}
 </style>
 </head>
 
@@ -717,6 +759,58 @@ function updateUI() {
         container.appendChild(card);
     });
 }
+// ▼ 侵略の禍々しい演出を実行する関数 ▼
+function playInvasionEffect(callback) {
+    // 1. 画面を歪ませるクラスを付与
+    document.body.classList.add("invasion-active");
+
+    // 2. 暗転用のレイヤーを画面に追加
+    const blackout = document.createElement("div");
+    blackout.className = "invasion-blackout";
+    document.body.appendChild(blackout);
+
+    // 3. 画面内のテキストをバグらせる処理
+    // （文字が含まれていそうな要素を適当に見つけて崩壊させます）
+    const targetElements = document.querySelectorAll("h3, p, button, span, div");
+    const glitchChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*!?;:<>~{}[]ΨΩΦ☠👁️";
+    
+    let glitchInterval = setInterval(() => {
+        targetElements.forEach(el => {
+            // 子要素を持たない（純粋なテキストだけの）要素を確率でバグらせる
+            if (el.children.length === 0 && el.innerText.trim() !== "" && Math.random() < 0.2) {
+                let glitchedText = "";
+                let len = el.innerText.length > 10 ? 10 : el.innerText.length; // 長すぎないように調整
+                for(let i=0; i<len; i++) {
+                    glitchedText += glitchChars[Math.floor(Math.random() * glitchChars.length)];
+                }
+                el.innerText = glitchedText;
+            }
+        });
+    }, 100);
+
+    // 4. 約2.5秒後に画面を真っ黒に染める
+    setTimeout(() => {
+        blackout.style.opacity = "1";
+        blackout.innerText = "世界が崩壊しました……";
+    }, 2500);
+
+    // 5. 約4秒後に演出を終了し、実際のリセット処理（callback）を実行する
+    setTimeout(() => {
+        clearInterval(glitchInterval);
+        document.body.classList.remove("invasion-active");
+        
+        // ここで実際の「侵略（データリセット＆異星ミント獲得）」の処理を動かす
+        if (callback) callback(); 
+
+        // リセット後、暗転を少しずつ晴らす
+        setTimeout(() => {
+            blackout.style.opacity = "0";
+            setTimeout(() => blackout.remove(), 1500);
+        }, 1500);
+
+    }, 4000); // 合計4秒間の恐怖体験
+}
+    
 function toggleGraph(idx) {
     if(data.hiddenGraphItems.includes(idx)) data.hiddenGraphItems = data.hiddenGraphItems.filter(id => id !== idx);
     else data.hiddenGraphItems.push(idx);
@@ -1260,6 +1354,7 @@ function usePotion(p){
 }
 
 function doDestroy(){
+    playInvasionEffect(() => {
     // --- 🩸 侵略時の大罪判定 ---
     if (isBuffActive("🌪️ テンペスト") || data.tempestCurse) unlockSin("🔥 憤怒の罪");
     if ((data.currentRunBought || 0) < 500) unlockSin("💤 怠惰の罪");
