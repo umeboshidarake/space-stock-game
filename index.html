@@ -1161,19 +1161,21 @@ function doCraft(isMax = false) {
 function openBrew(){
     const bBase = document.getElementById("brewBase"); const bMat1 = document.getElementById("brewMat1"); const bMat2 = document.getElementById("brewMat2");
     bBase.innerHTML = ""; bMat1.innerHTML = ""; bMat2.innerHTML = "";
+    
+    // ▼ 大罪ミントとダークマターのリスト
     const sinMints = ["傲慢のミント", "嫉妬のミント", "憤怒のミント", "怠惰のミント", "強欲のミント", "暴食のミント", "色欲のミント", "ダークマター"];
     
     Object.keys(data.mintInventory).forEach(m => {
-        if(data.mintInventory[m] > 0){
-           if(data.mintInventory[m] > 0 && !sinMints.includes(m)){
+        // ▼ ここを1つのif文にまとめました！
+        if(data.mintInventory[m] > 0 && !sinMints.includes(m)){
             let opt = `<option value="${m}">${m} (所持: ${data.mintInventory[m]})</option>`;
             if(m.includes("のもと")) bBase.innerHTML += opt;
             else { bMat1.innerHTML += opt; bMat2.innerHTML += opt; }
         }
     });
+    
     openScreen("brewScreen");
 }
-
 function doBrew(){
     const base = document.getElementById("brewBase").value; const m1 = document.getElementById("brewMat1").value; const m2 = document.getElementById("brewMat2").value;
     if(!base || !m1 || !m2) return showNotification("素材が足りません。");
