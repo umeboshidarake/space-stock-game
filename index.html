@@ -1235,13 +1235,13 @@ function openRecipeTree(){
             let li = document.createElement("li"); li.className = "tree-li";
             
             let allUnlocked = data.stocks.every(s => s.unlocked);
-            let hasInvaded = (data.invasionCount || 0) >= 1; // ←追加
-         if (r.result === "❓ 異質なポーション" && !canSeeAlien) {
-    li.innerHTML = `<span class="tree-unknown">？？？？？？？？</span> <span style="font-size:12px;color:#aaa;">(全銘柄の解放が必要...)</span>`;
-} else if (r.result === "❓ 異質なポーション" && canSeeAlien) {
-    let dispM1 = r.m1; let dispM2 = r.m2;
-    li.innerHTML = `<span class="tree-recipe" style="color:#ef4444; text-shadow:0 0 5px red;">${r.result}</span> <span style="font-size:12px;color:#fca5a5;">(${dispM1} + ${dispM2})</span>`;
-} // ...以下略
+            let hasInvaded = (data.invasionCount || 0) >= 1;
+            let canSeeAlien = allUnlocked || hasInvaded; // ← さっき抜けていた定義を補完！
+
+            // ▼ ここから下が綺麗に繋がります
+            if (r.result === "❓ 異質なポーション" && !canSeeAlien) {
+                li.innerHTML = `<span class="tree-unknown">？？？？？？？？</span> <span style="font-size:12px;color:#aaa;">(全銘柄の解放が必要...)</span>`;
+            } else if (r.result === "❓ 異質なポーション" && canSeeAlien) {
                 let dispM1 = r.m1; let dispM2 = r.m2;
                 li.innerHTML = `<span class="tree-recipe" style="color:#ef4444; text-shadow:0 0 5px red;">${r.result}</span> <span style="font-size:12px;color:#fca5a5;">(${dispM1} + ${dispM2})</span>`;
             } else if(r.result === "🎲 基本ポーション(ランダム)") {
