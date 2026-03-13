@@ -631,7 +631,9 @@ function calculateChangePercent(stock, idx) {
             changePercent = (Math.random() * vol * 2) - vol; 
         }
         // ▼ ギャラクシーブル弱体化（1.5倍 → 1.2倍）
-        if(isBuffActive("🚀 ギャラクシーブル")) changePercent = (Math.random() * vol * 1.025); 
+       if(isBuffActive("🚀 ギャラクシーブル")) {
+    changePercent = (Math.random() * vol * 2.0) - (vol * 0.5);
+}
         if(isBuffActive("🌋 ヴォルカニック・ブル")) changePercent = (Math.random() * vol * 2.5); 
         if(changePercent < 0 && isBuffActive("🛡 プロテクトジェル")) changePercent *= 0.5;
         if(changePercent < 0 && isBuffActive("🧂 ソルトバリア")) changePercent = 0;
@@ -686,7 +688,7 @@ function updateUI() {
     document.getElementById("mint").innerText = data.mint;
     
     // ▼ 異星のミントの隠しパッシブをUIにチラ見せ
-    let alienBonusStr = data.alienMints > 0 ? `<span style="font-size:12px; color:#a855f7; margin-left:5px;">[利益/破片 +${data.alienMints}%]</span>` : "";
+    let alienBonusStr = data.alienMints > 0 ? `<span style="font-size:12px; color:#a855f7; margin-left:5px;">[利益/破片 +${(data.alienMints * 0.01).toFixed(2)}%]</span>` : "";
     document.getElementById("alienMints").innerHTML = data.alienMints + alienBonusStr;
     
    document.querySelector(".destroy-btn").disabled = !data.alienPotionUsed;
@@ -849,7 +851,7 @@ function sellStock(idx, amount) {
     else if(isBuffActive("🍸 ソルティドッグ") && profit > 0) profit = Math.floor(profit * 1.5);
     
     // ▼ 異星のミントのパッシブ効果 ＆ ギャラクシーサワーの100倍増幅
-    let alienBonus = data.alienMints * 0.01;
+    let alienBonus = data.alienMints * 0.0001;
     if (isBuffActive("🌌 ギャラクシーサワー")) {
         alienBonus *= 100; 
     }
@@ -995,16 +997,16 @@ function getActiveMintTable() {
 
 function openGacha(){ 
     document.getElementById("gachaResult").innerHTML = "READY";
-    document.getElementById("gachaBtn").disabled = data.mint < 15;
-    document.getElementById("gacha10Btn").disabled = data.mint < 150;
+    document.getElementById("gachaBtn").disabled = data.mint < 30;
+    document.getElementById("gacha10Btn").disabled = data.mint < 300;
     openScreen("gachaScreen"); 
 }
 
 function spinGacha(times, isFree = false){
-    if(!isFree && data.mint < 15 * times) return showNotification("破片が足りません！");
+    if(!isFree && data.mint < 30 * times) return showNotification("破片が足りません！");
     if(isGachaSpinning) return;
     
-    if(!isFree) data.mint -= 15 * times; 
+    if(!isFree) data.mint -= 30 * times; 
     data.gachaCount += times; isGachaSpinning = true;
     data.currentRunGacha = (data.currentRunGacha || 0) + times;
     document.getElementById("gachaBtn").disabled = true; document.getElementById("gacha10Btn").disabled = true;
@@ -1044,7 +1046,7 @@ function spinGacha(times, isFree = false){
     let anim = setInterval(()=>{
         frame++; 
         resDiv.innerText = "✨ " + mintTypes[Math.floor(Math.random()*mintTypes.length)].name + " 抽出中... ✨";
-        if(frame > 15){
+        if(frame > 30){
             clearInterval(anim); isGachaSpinning = false;
             const getStyle = (name) => {
                 let originalRate = getActiveMintTable().find(m => m.name === name).rate;
@@ -1062,8 +1064,8 @@ function spinGacha(times, isFree = false){
                 }).join("") + `</div>`;
             }
             updateUI(); save();
-            document.getElementById("gachaBtn").disabled = data.mint < 15;
-            document.getElementById("gacha10Btn").disabled = data.mint < 150;
+            document.getElementById("gachaBtn").disabled = data.mint < 30;
+            document.getElementById("gacha10Btn").disabled = data.mint < 300;
         }
     }, 60);
 }
@@ -1077,9 +1079,11 @@ function openCraft() {
     let currentM2 = s2.value;
     
     s1.innerHTML = ""; s2.innerHTML = "";
+
+    const sinMints = ["傲慢のミント", "嫉妬のミント", "憤怒のミント", "怠惰のミント", "強欲のミント", "暴食のミント", "色欲のミント", "ダークマター"];
     
     Object.keys(data.mintInventory).forEach(m => {
-        if(data.mintInventory[m] > 0) {
+        if(data.mintInventory[m] > 0 && !sinMints.includes(m)) {
             s1.innerHTML += `<option value="${m}">${m} (所持: ${data.mintInventory[m]})</option>`;
             s2.innerHTML += `<option value="${m}">${m} (所持: ${data.mintInventory[m]})</option>`;
         }
@@ -1157,9 +1161,11 @@ function doCraft(isMax = false) {
 function openBrew(){
     const bBase = document.getElementById("brewBase"); const bMat1 = document.getElementById("brewMat1"); const bMat2 = document.getElementById("brewMat2");
     bBase.innerHTML = ""; bMat1.innerHTML = ""; bMat2.innerHTML = "";
+    const sinMints = ["傲慢のミント", "嫉妬のミント", "憤怒のミント", "怠惰のミント", "強欲のミント", "暴食のミント", "色欲のミント", "ダークマター"];
     
     Object.keys(data.mintInventory).forEach(m => {
         if(data.mintInventory[m] > 0){
+           if(data.mintInventory[m] > 0 && !sinMints.includes(m)){
             let opt = `<option value="${m}">${m} (所持: ${data.mintInventory[m]})</option>`;
             if(m.includes("のもと")) bBase.innerHTML += opt;
             else { bMat1.innerHTML += opt; bMat2.innerHTML += opt; }
@@ -1192,6 +1198,7 @@ function doBrew(){
 
     if (resultPotion === "❓ 異質なポーション") {
         let allUnlocked = data.stocks.every(s => s.unlocked);
+        let hasInvaded = (data.invasionCount || 0) >= 1;
         if (!allUnlocked) return showNotification("❌ まだこのレシピを理解できるほど、市場を把握していないようだ...（全銘柄の解放が必要）");
     }
     
@@ -1226,11 +1233,13 @@ function openRecipeTree(){
             let li = document.createElement("li"); li.className = "tree-li";
             
             let allUnlocked = data.stocks.every(s => s.unlocked);
-            if (r.result === "❓ 異質なポーション" && !allUnlocked) {
-                // 全銘柄解放前は伏せる
-                li.innerHTML = `<span class="tree-unknown">？？？？？？？？</span> <span style="font-size:12px;color:#aaa;">(全銘柄の解放が必要...)</span>`;
-            } else if (r.result === "❓ 異質なポーション" && allUnlocked) {
-                // ▼ 追加：全銘柄解放後は禍々しくレシピを表示！
+            let hasInvaded = (data.invasionCount || 0) >= 1; // ←追加
+         if (r.result === "❓ 異質なポーション" && !canSeeAlien) {
+    li.innerHTML = `<span class="tree-unknown">？？？？？？？？</span> <span style="font-size:12px;color:#aaa;">(全銘柄の解放が必要...)</span>`;
+} else if (r.result === "❓ 異質なポーション" && canSeeAlien) {
+    let dispM1 = r.m1; let dispM2 = r.m2;
+    li.innerHTML = `<span class="tree-recipe" style="color:#ef4444; text-shadow:0 0 5px red;">${r.result}</span> <span style="font-size:12px;color:#fca5a5;">(${dispM1} + ${dispM2})</span>`;
+} // ...以下略
                 let dispM1 = r.m1; let dispM2 = r.m2;
                 li.innerHTML = `<span class="tree-recipe" style="color:#ef4444; text-shadow:0 0 5px red;">${r.result}</span> <span style="font-size:12px;color:#fca5a5;">(${dispM1} + ${dispM2})</span>`;
             } else if(r.result === "🎲 基本ポーション(ランダム)") {
@@ -1365,7 +1374,7 @@ function doDestroy(){
     if ((data.currentRunShopSpent || 0) >= 10000000) unlockSin("🍖 暴食の罪");
 
     // --- 通常の侵略処理 ---
-    let gainedAlien = Math.floor(data.mint / 10);
+    let gainedAlien = Math.floor(data.mint / 100);
     if (gainedAlien < 1) gainedAlien = 1; 
     data.alienMints = (data.alienMints || 0) + gainedAlien;
     
