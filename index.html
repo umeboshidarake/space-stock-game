@@ -1406,8 +1406,6 @@ function doDestroy(){
     data.currentRunBought = 0;
     data.currentRunGacha = 0;
     data.currentRunShopSpent = 0;
-    data.alienPotionUsed = false;
-    data.alienPotionRecipeRevealed = false;
     
     data.stocks.forEach((s, idx) => {
         s.owned = 0; s.buyPrice = 0; s.unlocked = idx < 3; s.visible = idx < 3; 
