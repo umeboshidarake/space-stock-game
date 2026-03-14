@@ -586,6 +586,7 @@ function updateTimer() {
 
 // ▼ 変動率を計算する専用関数（予知に使うため分離）
 // ▼ 変動率を計算する専用関数（性格システム追加版）
+// ▼ 変動率を計算する関数
 function calculateChangePercent(stock, idx) {
     let vol = stock.vol;
     // ▼ ハイパードライブ弱体化（2倍 → 1.5倍）
@@ -631,15 +632,23 @@ function calculateChangePercent(stock, idx) {
             changePercent = (Math.random() * vol * 2) - vol; 
         }
         // ▼ ギャラクシーブル弱体化（1.5倍 → 1.2倍）
-       if(isBuffActive("🚀 ギャラクシーブル")) {
-    changePercent = (Math.random() * vol * 2.0) - (vol * 0.5);
-}
+        if(isBuffActive("🚀 ギャラクシーブル")) {
+            changePercent = (Math.random() * vol * 2.0) - (vol * 0.5);
+        }
         if(isBuffActive("🌋 ヴォルカニック・ブル")) changePercent = (Math.random() * vol * 2.5); 
+        
+        // 📈 【追加】100G以下の救済措置（70%の確率でプラス変動にする）
+        if (stock.price <= 100) {
+            if (Math.random() < 0.7) {
+                changePercent = Math.abs(changePercent); // マイナスだった場合も強制的にプラスにする
+            }
+        }
+
         if(changePercent < 0 && isBuffActive("🛡 プロテクトジェル")) changePercent *= 0.5;
         if(changePercent < 0 && isBuffActive("🧂 ソルトバリア")) changePercent = 0;
     }
 
-    // 🧊 コールドウォーターの保護（ここです！）
+    // 🧊 コールドウォーターの保護
     if (data.coldWaterTarget && data.coldWaterTarget.id === idx && data.coldWaterTarget.counts > 0) {
         if (changePercent < 0) changePercent = 0;
     }
@@ -649,6 +658,7 @@ function calculateChangePercent(stock, idx) {
     
     return changePercent;
 }
+
 // ▼ 実際の価格更新
 function updatePrices(skipIntervalUpdate = false) {
     let isTempest = isBuffActive("🌪️ テンペスト");
@@ -680,8 +690,7 @@ function updatePrices(skipIntervalUpdate = false) {
     data.points += 100;
     if(!skipIntervalUpdate) data.nextChange = Date.now() + getTickInterval();
     updateUI(); drawAllGraph(); save();
-}
-// --- UI更新・株取引 ---
+}// --- UI更新・株取引 ---
 function updateUI() {
     document.getElementById("money").innerText = data.money.toLocaleString();
     document.getElementById("points").innerText = data.points;
